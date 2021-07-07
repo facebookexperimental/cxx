@@ -459,6 +459,7 @@ mod lossy;
 pub mod memory;
 mod opaque;
 mod result;
+mod rust_option;
 mod rust_slice;
 mod rust_str;
 mod rust_string;
@@ -480,6 +481,7 @@ pub use crate::cxx_vector::CxxVector;
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 pub use crate::exception::Exception;
 pub use crate::extern_type::{kind, ExternType};
+pub use crate::rust_option::RustOption;
 pub use crate::shared_ptr::SharedPtr;
 pub use crate::string::CxxString;
 pub use crate::unique_ptr::UniquePtr;
@@ -511,10 +513,13 @@ pub mod private {
     pub use crate::opaque::Opaque;
     #[cfg(feature = "alloc")]
     pub use crate::result::{r#try, Result};
+    pub use crate::rust_option::assert_option_safe;
+    pub use crate::rust_option::RustOption;
     pub use crate::rust_slice::RustSlice;
     pub use crate::rust_str::RustStr;
     #[cfg(feature = "alloc")]
     pub use crate::rust_string::RustString;
+    pub use crate::rust_type::ImplOption;
     pub use crate::rust_type::{ImplBox, ImplVec, RustType};
     #[cfg(feature = "alloc")]
     pub use crate::rust_vec::RustVec;
