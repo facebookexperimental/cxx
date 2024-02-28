@@ -118,7 +118,7 @@ the linker like this:
 error: linking with `cc` failed: exit code: 1
  |
  = /bin/ld: target/debug/deps/cxx-demo-7cb7fddf3d67d880.rcgu.o: in function `cxx_demo::ffi::new_blobstore_client':
-   src/main.rs:1: undefined reference to `cxxbridge1$new_blobstore_client'
+   src/main.rs:1: undefined reference to `meta_cxxbridge1$new_blobstore_client'
    collect2: error: ld returned 1 exit status
 ```
 

@@ -119,35 +119,35 @@ macro_rules! impl_weak_ptr_target {
             }
             unsafe fn __null(new: *mut c_void) {
                 extern "C" {
-                    #[link_name = concat!("cxxbridge1$std$weak_ptr$", $segment, "$null")]
+                    #[link_name = concat!("meta_cxxbridge1$std$weak_ptr$", $segment, "$null")]
                     fn __null(new: *mut c_void);
                 }
                 unsafe { __null(new) }
             }
             unsafe fn __clone(this: *const c_void, new: *mut c_void) {
                 extern "C" {
-                    #[link_name = concat!("cxxbridge1$std$weak_ptr$", $segment, "$clone")]
+                    #[link_name = concat!("meta_cxxbridge1$std$weak_ptr$", $segment, "$clone")]
                     fn __clone(this: *const c_void, new: *mut c_void);
                 }
                 unsafe { __clone(this, new) }
             }
             unsafe fn __downgrade(shared: *const c_void, weak: *mut c_void) {
                 extern "C" {
-                    #[link_name = concat!("cxxbridge1$std$weak_ptr$", $segment, "$downgrade")]
+                    #[link_name = concat!("meta_cxxbridge1$std$weak_ptr$", $segment, "$downgrade")]
                     fn __downgrade(shared: *const c_void, weak: *mut c_void);
                 }
                 unsafe { __downgrade(shared, weak) }
             }
             unsafe fn __upgrade(weak: *const c_void, shared: *mut c_void) {
                 extern "C" {
-                    #[link_name = concat!("cxxbridge1$std$weak_ptr$", $segment, "$upgrade")]
+                    #[link_name = concat!("meta_cxxbridge1$std$weak_ptr$", $segment, "$upgrade")]
                     fn __upgrade(weak: *const c_void, shared: *mut c_void);
                 }
                 unsafe { __upgrade(weak, shared) }
             }
             unsafe fn __drop(this: *mut c_void) {
                 extern "C" {
-                    #[link_name = concat!("cxxbridge1$std$weak_ptr$", $segment, "$drop")]
+                    #[link_name = concat!("meta_cxxbridge1$std$weak_ptr$", $segment, "$drop")]
                     fn __drop(this: *mut c_void);
                 }
                 unsafe { __drop(this) }

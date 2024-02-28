@@ -14,19 +14,19 @@ use core::slice;
 use core::str::{self, Utf8Error};
 
 extern "C" {
-    #[link_name = "cxxbridge1$cxx_string$init"]
+    #[link_name = "meta_cxxbridge1$cxx_string$init"]
     fn string_init(this: &mut MaybeUninit<CxxString>, ptr: *const u8, len: usize);
-    #[link_name = "cxxbridge1$cxx_string$destroy"]
+    #[link_name = "meta_cxxbridge1$cxx_string$destroy"]
     fn string_destroy(this: &mut MaybeUninit<CxxString>);
-    #[link_name = "cxxbridge1$cxx_string$data"]
+    #[link_name = "meta_cxxbridge1$cxx_string$data"]
     fn string_data(this: &CxxString) -> *const u8;
-    #[link_name = "cxxbridge1$cxx_string$length"]
+    #[link_name = "meta_cxxbridge1$cxx_string$length"]
     fn string_length(this: &CxxString) -> usize;
-    #[link_name = "cxxbridge1$cxx_string$clear"]
+    #[link_name = "meta_cxxbridge1$cxx_string$clear"]
     fn string_clear(this: Pin<&mut CxxString>);
-    #[link_name = "cxxbridge1$cxx_string$reserve_total"]
+    #[link_name = "meta_cxxbridge1$cxx_string$reserve_total"]
     fn string_reserve_total(this: Pin<&mut CxxString>, new_cap: usize);
-    #[link_name = "cxxbridge1$cxx_string$push"]
+    #[link_name = "meta_cxxbridge1$cxx_string$push"]
     fn string_push(this: Pin<&mut CxxString>, ptr: *const u8, len: usize);
 }
 

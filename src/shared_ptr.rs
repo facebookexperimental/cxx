@@ -213,35 +213,35 @@ macro_rules! impl_shared_ptr_target {
             }
             unsafe fn __null(new: *mut c_void) {
                 extern "C" {
-                    #[link_name = concat!("cxxbridge1$std$shared_ptr$", $segment, "$null")]
+                    #[link_name = concat!("meta_cxxbridge1$std$shared_ptr$", $segment, "$null")]
                     fn __null(new: *mut c_void);
                 }
                 unsafe { __null(new) }
             }
             unsafe fn __new(value: Self, new: *mut c_void) {
                 extern "C" {
-                    #[link_name = concat!("cxxbridge1$std$shared_ptr$", $segment, "$uninit")]
+                    #[link_name = concat!("meta_cxxbridge1$std$shared_ptr$", $segment, "$uninit")]
                     fn __uninit(new: *mut c_void) -> *mut c_void;
                 }
                 unsafe { __uninit(new).cast::<$ty>().write(value) }
             }
             unsafe fn __clone(this: *const c_void, new: *mut c_void) {
                 extern "C" {
-                    #[link_name = concat!("cxxbridge1$std$shared_ptr$", $segment, "$clone")]
+                    #[link_name = concat!("meta_cxxbridge1$std$shared_ptr$", $segment, "$clone")]
                     fn __clone(this: *const c_void, new: *mut c_void);
                 }
                 unsafe { __clone(this, new) }
             }
             unsafe fn __get(this: *const c_void) -> *const Self {
                 extern "C" {
-                    #[link_name = concat!("cxxbridge1$std$shared_ptr$", $segment, "$get")]
+                    #[link_name = concat!("meta_cxxbridge1$std$shared_ptr$", $segment, "$get")]
                     fn __get(this: *const c_void) -> *const c_void;
                 }
                 unsafe { __get(this) }.cast()
             }
             unsafe fn __drop(this: *mut c_void) {
                 extern "C" {
-                    #[link_name = concat!("cxxbridge1$std$shared_ptr$", $segment, "$drop")]
+                    #[link_name = concat!("meta_cxxbridge1$std$shared_ptr$", $segment, "$drop")]
                     fn __drop(this: *mut c_void);
                 }
                 unsafe { __drop(this) }

@@ -1469,7 +1469,7 @@ fn type_id(name: &Pair) -> TokenStream {
 fn expand_rust_box(key: NamedImplKey, types: &Types, explicit_impl: Option<&Impl>) -> TokenStream {
     let ident = key.rust;
     let resolve = types.resolve(ident);
-    let link_prefix = format!("cxxbridge1$box${}$", resolve.name.to_symbol());
+    let link_prefix = format!("meta_cxxbridge1$box${}$", resolve.name.to_symbol());
     let link_alloc = format!("{}alloc", link_prefix);
     let link_dealloc = format!("{}dealloc", link_prefix);
     let link_drop = format!("{}drop", link_prefix);
@@ -1517,7 +1517,7 @@ fn expand_rust_box(key: NamedImplKey, types: &Types, explicit_impl: Option<&Impl
 fn expand_rust_vec(key: NamedImplKey, types: &Types, explicit_impl: Option<&Impl>) -> TokenStream {
     let elem = key.rust;
     let resolve = types.resolve(elem);
-    let link_prefix = format!("cxxbridge1$rust_vec${}$", resolve.name.to_symbol());
+    let link_prefix = format!("meta_cxxbridge1$rust_vec${}$", resolve.name.to_symbol());
     let link_new = format!("{}new", link_prefix);
     let link_drop = format!("{}drop", link_prefix);
     let link_len = format!("{}len", link_prefix);
@@ -1619,7 +1619,7 @@ fn expand_rust_option(
         OptionInner::RustBox(key) => {
             let elem = key.rust;
             let resolve = types.resolve(elem);
-            let link_prefix = format!("cxxbridge1$rust_option$Box${}$", resolve.name.to_symbol());
+            let link_prefix = format!("meta_cxxbridge1$rust_option$Box${}$", resolve.name.to_symbol());
             let local_prefix = format_ident!("{}__box__option_", elem);
             (elem, key, resolve, link_prefix, local_prefix)
         }
@@ -1629,7 +1629,7 @@ fn expand_rust_option(
                 return TokenStream::new();
             }
             let resolve = types.resolve(elem);
-            let link_prefix = format!("cxxbridge1$rust_option$const${}$", resolve.name.to_symbol());
+            let link_prefix = format!("meta_cxxbridge1$rust_option$const${}$", resolve.name.to_symbol());
             let local_prefix = format_ident!("{}__const__ref__option_", elem);
             (elem, key, resolve, link_prefix, local_prefix)
         }
@@ -1639,7 +1639,7 @@ fn expand_rust_option(
                 return TokenStream::new();
             }
             let resolve = types.resolve(elem);
-            let link_prefix = format!("cxxbridge1$rust_option${}$", resolve.name.to_symbol());
+            let link_prefix = format!("meta_cxxbridge1$rust_option${}$", resolve.name.to_symbol());
             let local_prefix = format_ident!("{}__ref__option_", elem);
             (elem, key, resolve, link_prefix, local_prefix)
         }
@@ -1650,7 +1650,7 @@ fn expand_rust_option(
             }
             let resolve = types.resolve(elem);
             let link_prefix = format!(
-                "cxxbridge1$rust_option$const$Vec${}$",
+                "meta_cxxbridge1$rust_option$const$Vec${}$",
                 resolve.name.to_symbol()
             );
             let local_prefix = format_ident!("{}__vec__const__ref__option_", elem);
@@ -1662,7 +1662,7 @@ fn expand_rust_option(
                 return TokenStream::new();
             }
             let resolve = types.resolve(elem);
-            let link_prefix = format!("cxxbridge1$rust_option$Vec${}$", resolve.name.to_symbol());
+            let link_prefix = format!("meta_cxxbridge1$rust_option$Vec${}$", resolve.name.to_symbol());
             let local_prefix = format_ident!("{}__vec__ref__option_", elem);
             (elem, key, resolve, link_prefix, local_prefix)
         }
@@ -1779,7 +1779,7 @@ fn expand_unique_ptr(
     let ident = key.rust;
     let name = ident.to_string();
     let resolve = types.resolve(ident);
-    let prefix = format!("cxxbridge1$unique_ptr${}$", resolve.name.to_symbol());
+    let prefix = format!("meta_cxxbridge1$unique_ptr${}$", resolve.name.to_symbol());
     let link_null = format!("{}null", prefix);
     let link_uninit = format!("{}uninit", prefix);
     let link_raw = format!("{}raw", prefix);
@@ -1875,7 +1875,7 @@ fn expand_shared_ptr(
     let ident = key.rust;
     let name = ident.to_string();
     let resolve = types.resolve(ident);
-    let prefix = format!("cxxbridge1$shared_ptr${}$", resolve.name.to_symbol());
+    let prefix = format!("meta_cxxbridge1$shared_ptr${}$", resolve.name.to_symbol());
     let link_null = format!("{}null", prefix);
     let link_uninit = format!("{}uninit", prefix);
     let link_clone = format!("{}clone", prefix);
@@ -1953,7 +1953,7 @@ fn expand_weak_ptr(key: NamedImplKey, types: &Types, explicit_impl: Option<&Impl
     let ident = key.rust;
     let name = ident.to_string();
     let resolve = types.resolve(ident);
-    let prefix = format!("cxxbridge1$weak_ptr${}$", resolve.name.to_symbol());
+    let prefix = format!("meta_cxxbridge1$weak_ptr${}$", resolve.name.to_symbol());
     let link_null = format!("{}null", prefix);
     let link_clone = format!("{}clone", prefix);
     let link_downgrade = format!("{}downgrade", prefix);
@@ -2028,14 +2028,14 @@ fn expand_cxx_vector(
     let elem = key.rust;
     let name = elem.to_string();
     let resolve = types.resolve(elem);
-    let prefix = format!("cxxbridge1$std$vector${}$", resolve.name.to_symbol());
+    let prefix = format!("meta_cxxbridge1$std$vector${}$", resolve.name.to_symbol());
     let link_new = format!("{}new", prefix);
     let link_size = format!("{}size", prefix);
     let link_get_unchecked = format!("{}get_unchecked", prefix);
     let link_push_back = format!("{}push_back", prefix);
     let link_pop_back = format!("{}pop_back", prefix);
     let unique_ptr_prefix = format!(
-        "cxxbridge1$unique_ptr$std$vector${}$",
+        "meta_cxxbridge1$unique_ptr$std$vector${}$",
         resolve.name.to_symbol(),
     );
     let link_unique_ptr_null = format!("{}null", unique_ptr_prefix);

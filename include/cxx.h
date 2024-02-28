@@ -21,7 +21,7 @@
 #endif
 
 namespace rust {
-inline namespace cxxbridge1 {
+inline namespace meta_cxxbridge1 {
 
 struct unsafe_bitcopy_t;
 
@@ -1195,5 +1195,5 @@ struct IsRelocatable
                         std::is_trivially_destructible<T>::value>>::type {};
 #endif // CXXBRIDGE1_RELOCATABLE
 
-} // namespace cxxbridge1
+} // namespace meta_cxxbridge1
 } // namespace rust

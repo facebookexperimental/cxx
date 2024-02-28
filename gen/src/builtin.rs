@@ -143,7 +143,7 @@ pub(super) fn write(out: &mut OutFile) {
     }
 
     out.begin_block(Block::Namespace("rust"));
-    out.begin_block(Block::InlineNamespace("cxxbridge1"));
+    out.begin_block(Block::InlineNamespace("meta_cxxbridge1"));
 
     let cxx_header = include.has_cxx_header();
     if !cxx_header {
@@ -394,7 +394,7 @@ pub(super) fn write(out: &mut OutFile) {
     }
 
     out.end_block(Block::AnonymousNamespace);
-    out.end_block(Block::InlineNamespace("cxxbridge1"));
+    out.end_block(Block::InlineNamespace("meta_cxxbridge1"));
 
     if builtin.trycatch {
         out.begin_block(Block::Namespace("behavior"));

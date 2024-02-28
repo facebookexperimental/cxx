@@ -3,7 +3,7 @@
 //   (a) One-off internal symbol.
 //          pattern:  {CXXBRIDGE} $ {NAME}
 //          examples:
-//             - cxxbridge1$exception
+//             - meta_cxxbridge1$exception
 //          defining characteristics:
 //             - 2 segments
 //             - starts with cxxbridge
@@ -11,7 +11,7 @@
 //   (b) Behavior on a builtin binding without generic parameter.
 //          pattern:  {CXXBRIDGE} $ {TYPE} $ {NAME}
 //          examples:
-//             - cxxbridge1$string$len
+//             - meta_cxxbridge1$string$len
 //          defining characteristics:
 //             - 3 segments
 //             - starts with cxxbridge
@@ -19,8 +19,8 @@
 //   (c) Behavior on a builtin binding with generic parameter.
 //          pattern:  {CXXBRIDGE} $ {TYPE} $ {PARAM...} $ {NAME}
 //          examples:
-//             - cxxbridge1$box$org$rust$Struct$alloc
-//             - cxxbridge1$unique_ptr$std$vector$u8$drop
+//             - meta_cxxbridge1$box$org$rust$Struct$alloc
+//             - meta_cxxbridge1$unique_ptr$std$vector$u8$drop
 //          defining characteristics:
 //             - 4+ segments
 //             - starts with cxxbridge
@@ -28,8 +28,8 @@
 //   (d) User-defined extern function.
 //          pattern:  {NAMESPACE...} $ {CXXBRIDGE} $ {NAME}
 //          examples:
-//             - cxxbridge1$new_client
-//             - org$rust$cxxbridge1$new_client
+//             - meta_cxxbridge1$new_client
+//             - org$rust$meta_cxxbridge1$new_client
 //          defining characteristics:
 //             - cxxbridge is second from end
 //          FIXME: conflict with (a) if they collide with one of our one-off symbol names in the global namespace
@@ -37,7 +37,7 @@
 //   (e) User-defined extern member function.
 //          pattern:  {NAMESPACE...} $ {CXXBRIDGE} $ {TYPE} $ {NAME}
 //          examples:
-//             - org$cxxbridge1$Struct$get
+//             - org$meta_cxxbridge1$Struct$get
 //          defining characteristics:
 //             - cxxbridge is third from end
 //          FIXME: conflict with (b) if e.g. user binds a type in global namespace that collides with our builtin type names
@@ -45,14 +45,14 @@
 //   (f) Operator overload.
 //          pattern:  {NAMESPACE...} $ {CXXBRIDGE} $ {TYPE} $ operator $ {NAME}
 //          examples:
-//             - org$rust$cxxbridge1$Struct$operator$eq
+//             - org$rust$meta_cxxbridge1$Struct$operator$eq
 //          defining characteristics:
 //             - second segment from end is `operator` (not possible in type or namespace names)
 //
 //   (g) Closure trampoline.
 //          pattern:  {NAMESPACE...} $ {CXXBRIDGE} $ {TYPE?} $ {NAME} $ {ARGUMENT} $ {DIRECTION}
 //          examples:
-//             - org$rust$cxxbridge1$Struct$invoke$f$0
+//             - org$rust$meta_cxxbridge1$Struct$invoke$f$0
 //          defining characteristics:
 //             - last symbol is `0` (C half) or `1` (Rust half) which are not legal identifiers on their own
 //
@@ -76,7 +76,7 @@
 use crate::syntax::symbol::{self, Symbol};
 use crate::syntax::{ExternFn, Pair, Types};
 
-const CXXBRIDGE: &str = "cxxbridge1";
+const CXXBRIDGE: &str = "meta_cxxbridge1";
 
 macro_rules! join {
     ($($segment:expr),+ $(,)?) => {
