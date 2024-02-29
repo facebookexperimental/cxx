@@ -709,7 +709,7 @@ fn write_cxx_function_shim<'a>(out: &mut OutFile<'a>, efn: &'a ExternFn) {
         out.builtin.ptr_len = true;
         write!(out, "::rust::repr::PtrLen ");
     } else {
-        write_extern_return_type_space(out, &efn.ret);
+        write_extern_return_type_space(out, efn.ret.as_ref());
     }
     let mangled = mangle::extern_fn(efn, out.types);
     write!(out, "{}(", mangled);
@@ -748,7 +748,7 @@ fn write_cxx_function_shim<'a>(out: &mut OutFile<'a>, efn: &'a ExternFn) {
     }
     writeln!(out, ") noexcept {{");
     write!(out, "  ");
-    write_return_type(out, &efn.ret);
+    write_return_type(out, efn.ret.as_ref());
     match &efn.receiver {
         None => write!(out, "(*{}$)(", efn.name.rust),
         Some(receiver) => write!(
@@ -837,8 +837,6 @@ fn write_cxx_function_shim<'a>(out: &mut OutFile<'a>, efn: &'a ExternFn) {
             out.builtin.unsafe_bitcopy = true;
             write_type(out, &arg.ty);
             write!(out, "(::rust::unsafe_bitcopy, *{})", arg.name.cxx);
-        } else if let Type::RustOption(_) = arg.ty {
-            write!(out, "std::move(* {})", arg.name.cxx);
         } else if out.types.needs_indirect_abi(&arg.ty) {
             out.include.utility = true;
             write!(out, "::std::move(*{})", arg.name.cxx);
@@ -904,7 +902,7 @@ fn write_rust_function_decl_impl(
         out.builtin.ptr_len = true;
         write!(out, "::rust::repr::PtrLen ");
     } else {
-        write_extern_return_type_space(out, &sig.ret);
+        write_extern_return_type_space(out, sig.ret.as_ref());
     }
     write!(out, "{}(", link_name);
     let mut needs_comma = false;
@@ -976,7 +974,7 @@ fn write_rust_function_shim_decl(
     indirect_call: bool,
 ) {
     begin_function_definition(out);
-    write_return_type(out, &sig.ret);
+    write_return_type(out, sig.ret.as_ref());
     write!(out, "{}(", local_name);
     for (i, arg) in sig.args.iter().enumerate() {
         if i > 0 {
@@ -1143,7 +1141,7 @@ fn write_rust_function_shim_impl(
     writeln!(out, "}}");
 }
 
-fn write_return_type(out: &mut OutFile, ty: &Option<Type>) {
+fn write_return_type(out: &mut OutFile, ty: Option<&Type>) {
     match ty {
         None => write!(out, "void "),
         Some(ty) => write_type_space(out, ty),
@@ -1182,7 +1180,7 @@ fn write_indirect_return_type_space(out: &mut OutFile, ty: &Type) {
     }
 }
 
-fn write_extern_return_type_space(out: &mut OutFile, ty: &Option<Type>) {
+fn write_extern_return_type_space(out: &mut OutFile, ty: Option<&Type>) {
     match ty {
         Some(Type::RustBox(ty) | Type::UniquePtr(ty)) => {
             write_type_space(out, &ty.inner);
@@ -1240,17 +1238,7 @@ fn write_type(out: &mut OutFile, ty: &Type) {
         }
         Type::RustOption(ty) => {
             write!(out, "::rust::Option<");
-            match &ty.inner {
-                Type::RustBox(_) => write_type(out, &ty.inner),
-                Type::Ref(r) => {
-                    write_type_space(out, &r.inner);
-                    if !r.mutable {
-                        write!(out, "const ");
-                    }
-                    write!(out, "*");
-                }
-                _ => unreachable!(),
-            }
+            write_type(out, &ty.inner);
             write!(out, ">");
         }
         Type::UniquePtr(ptr) => {
@@ -1408,14 +1396,14 @@ impl<'a> ToTypename for RustOption<'a> {
             RustOption::RustBox(inner) => {
                 format!("::rust::cxxbridge1::Box<{}>", inner.to_typename(types))
             }
-            RustOption::Ref(inner) => format!("const {}*", inner.to_typename(types)),
-            RustOption::MutRef(inner) => format!("{}*", inner.to_typename(types)),
+            RustOption::Ref(inner) => format!("const {}&", inner.to_typename(types)),
+            RustOption::MutRef(inner) => format!("{}&", inner.to_typename(types)),
             RustOption::RefVec(inner) => format!(
-                "const ::rust::cxxbridge1::Vec<{}>*",
+                "const ::rust::cxxbridge1::Vec<{}>&",
                 inner.to_typename(types)
             ),
             RustOption::MutRefVec(inner) => {
-                format!("::rust::cxxbridge1::Vec<{}>*", inner.to_typename(types))
+                format!("::rust::cxxbridge1::Vec<{}>&", inner.to_typename(types))
             }
         }
     }
@@ -1565,31 +1553,49 @@ fn write_rust_vec_extern(out: &mut OutFile, key: NamedImplKey) {
 
 fn write_rust_option_extern(out: &mut OutFile, inner: OptionInner) {
     out.include.cstddef = true;
-    let element = match inner {
-        OptionInner::RustBox(key) => RustOption::RustBox(key.rust),
+    let (element, is_const, value_type) = match inner {
+        OptionInner::RustBox(key) => {
+            let element = RustOption::RustBox(key.rust);
+            let value_type = element.to_typename(out.types) ;
+            (element, false, value_type)
+        }
         OptionInner::Ref(key) => {
             if out.types.try_resolve(key.rust).is_none() {
                 return;
             }
-            RustOption::Ref(key.rust)
+            let resolve = out.types.resolve(&key);
+            let value_type = resolve.name.to_fully_qualified();
+            (RustOption::Ref(key.rust), true, value_type)
         }
         OptionInner::MutRef(key) => {
             if out.types.try_resolve(key.rust).is_none() {
                 return;
             }
-            RustOption::MutRef(key.rust)
+            let resolve = out.types.resolve(&key);
+            let value_type = resolve.name.to_fully_qualified();
+            (RustOption::MutRef(key.rust), false, value_type)
         }
         OptionInner::RefVec(key) => {
             if out.types.try_resolve(key.rust).is_none() {
                 return;
             }
-            RustOption::RefVec(key.rust)
+            let resolve = out.types.resolve(&key);
+            let value_type = format!(
+                "::rust::cxxbridge1::Vec<{}>",
+                resolve.name.to_fully_qualified()
+            );
+            (RustOption::RefVec(key.rust), true, value_type)
         }
         OptionInner::MutRefVec(key) => {
             if out.types.try_resolve(key.rust).is_none() {
                 return;
             }
-            RustOption::MutRefVec(key.rust)
+            let resolve = out.types.resolve(&key);
+            let value_type = format!(
+                "::rust::cxxbridge1::Vec<{}>",
+                resolve.name.to_fully_qualified()
+            );
+            (RustOption::MutRefVec(key.rust), false, value_type)
         }
     };
     let inner = element.to_typename(out.types);
@@ -1610,16 +1616,34 @@ fn write_rust_option_extern(out: &mut OutFile, inner: OptionInner) {
         "bool cxxbridge1$rust_option${}$has_value(::rust::Option<{}> const *ptr) noexcept;",
         instance, inner
     );
-    writeln!(
-        out,
-        "{}* cxxbridge1$rust_option${}$value_ptr(::rust::Option<{0}> *ptr) noexcept;",
-        inner, instance
-    );
-    writeln!(
-        out,
-        "void cxxbridge1$rust_option${}$set(::rust::Option<{1}> *ptr, {1}&& value) noexcept;",
-        instance, inner
-    );
+    if is_const {
+        writeln!(
+            out,
+            "{} const * cxxbridge1$rust_option${}$value(::rust::Option<{}> const *ptr) noexcept;",
+            value_type, instance, inner
+        );
+        writeln!(
+            out,
+            "void cxxbridge1$rust_option${}$set(::rust::Option<{}> *ptr, {} const *value) noexcept;",
+            instance, inner, value_type
+        );
+    } else {
+        writeln!(
+            out,
+            "{} const * cxxbridge1$rust_option${}$value_const(::rust::Option<{}> const *ptr) noexcept;",
+            value_type, instance, inner
+        );
+        writeln!(
+            out,
+            "{}* cxxbridge1$rust_option${}$value(::rust::Option<{}> *ptr) noexcept;",
+            value_type, instance, inner
+        );
+        writeln!(
+            out,
+            "void cxxbridge1$rust_option${}$set(::rust::Option<{}> *ptr, {} *value) noexcept;",
+            instance, inner, value_type
+        );
+    }
 }
 
 fn write_rust_box_impl(out: &mut OutFile, key: NamedImplKey) {
@@ -1743,31 +1767,33 @@ fn write_rust_vec_impl(out: &mut OutFile, key: NamedImplKey) {
 }
 
 fn write_rust_option_impl(out: &mut OutFile, inner: OptionInner) {
-    let element = match inner {
-        OptionInner::RustBox(key) => RustOption::RustBox(key.rust),
+    let (element, is_const, value_needs_ref) = match inner {
+        OptionInner::RustBox(key) => {
+            (RustOption::RustBox(key.rust), false, true)
+        }
         OptionInner::Ref(key) => {
             if out.types.try_resolve(key.rust).is_none() {
                 return;
             }
-            RustOption::Ref(key.rust)
+            (RustOption::Ref(key.rust), true, false)
         }
         OptionInner::MutRef(key) => {
             if out.types.try_resolve(key.rust).is_none() {
                 return;
             }
-            RustOption::MutRef(key.rust)
+            (RustOption::MutRef(key.rust), false, false)
         }
         OptionInner::RefVec(key) => {
             if out.types.try_resolve(key.rust).is_none() {
                 return;
             }
-            RustOption::RefVec(key.rust)
+            (RustOption::RefVec(key.rust), true, false)
         }
         OptionInner::MutRefVec(key) => {
             if out.types.try_resolve(key.rust).is_none() {
                 return;
             }
-            RustOption::MutRefVec(key.rust)
+            (RustOption::MutRefVec(key.rust), false, false)
         }
     };
     let inner = element.to_typename(out.types);
@@ -1801,20 +1827,42 @@ fn write_rust_option_impl(out: &mut OutFile, inner: OptionInner) {
 
     writeln!(out, "template <>");
     begin_function_definition(out);
-    writeln!(out, "{0}* Option<{0}>::value_ptr() noexcept {{", inner);
+    if value_needs_ref {
+        writeln!(out, "{0}& Option<{0}>::value() noexcept {{", inner);
+    } else if is_const {
+        writeln!(out, "{0} Option<{0}>::value() const noexcept {{", inner);
+    } else {
+        writeln!(out, "{0} Option<{0}>::value() noexcept {{", inner);
+    }
     writeln!(
         out,
-        "  return cxxbridge1$rust_option${}$value_ptr(this);",
+        "  return *cxxbridge1$rust_option${}$value(this);",
         instance
     );
     writeln!(out, "}}");
 
+    if !is_const {
+        writeln!(out, "template <>");
+        begin_function_definition(out);
+        if value_needs_ref {
+            writeln!(out, "const {0}& Option<{0}>::value() const noexcept {{", inner);
+        } else {
+            writeln!(out, "const {0} Option<{0}>::value() const noexcept {{", inner);
+        }
+        writeln!(
+            out,
+            "  return *cxxbridge1$rust_option${}$value_const(this);",
+            instance
+        );
+        writeln!(out, "}}");
+    }
+
     writeln!(out, "template <>");
     begin_function_definition(out);
-    writeln!(out, "void Option<{0}>::set({0}&& value) noexcept {{", inner);
+    writeln!(out, "void Option<{0}>::set({0} value) noexcept {{", inner);
     writeln!(
         out,
-        "  return cxxbridge1$rust_option${}$set(this, ::std::move(value));",
+        "  return cxxbridge1$rust_option${}$set(this, &value);",
         instance
     );
     writeln!(out, "}}");

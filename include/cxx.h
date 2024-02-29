@@ -297,6 +297,85 @@ private:
 };
 #endif // CXXBRIDGE1_RUST_BOX
 
+#ifndef CXXBRIDGE1_RUST_OPTION
+template <typename T>
+class Option final {};
+
+template <typename T>
+class Option<T&> {
+public:
+  Option() noexcept;
+  Option(Option&&) noexcept;
+  Option(T&) noexcept;
+  ~Option() noexcept;
+
+  Option<T&>& operator=(Option&&) noexcept;
+  const T& operator*() const noexcept;
+  const T* operator->() const noexcept;
+  T& operator*() noexcept;
+  T* operator->() noexcept;
+
+  bool has_value() const noexcept;
+  const T& value() const noexcept;
+  T& value() noexcept;
+  void reset();
+  void set(T&) noexcept;
+private:
+  void* repr;
+
+  void drop() noexcept;
+};
+
+template <typename T>
+class Option<const T&> {
+public:
+  Option() noexcept;
+  Option(const Option&) noexcept;
+  Option(Option&&) noexcept;
+  Option(const T&) noexcept;
+  ~Option() noexcept;
+
+  Option<const T&>& operator=(const Option&) noexcept;
+  Option<const T&>& operator=(Option&&) noexcept;
+  const T& operator*() const noexcept;
+  const T* operator->() const noexcept;
+
+  bool has_value() const noexcept;
+  const T& value() const noexcept;
+  void reset();
+  void set(const T&) noexcept;
+private:
+  void* repr;
+
+  void drop() noexcept;
+};
+
+template <typename T>
+class Option<Box<T>> {
+public:
+  Option() noexcept;
+  Option(Option&&) noexcept;
+  Option(Box<T>&&) noexcept;
+  ~Option() noexcept;
+
+  Option<Box<T>>& operator=(Option&&) noexcept;
+  const Box<T>& operator*() const noexcept;
+  const Box<T>& operator->() const noexcept;
+  Box<T>& operator*() noexcept;
+  Box<T>& operator->() noexcept;
+
+  bool has_value() const noexcept;
+  const Box<T>& value() const noexcept;
+  Box<T>& value() noexcept;
+  void reset();
+  void set(Box<T>) noexcept;
+private:
+  void* repr;
+
+  void drop() noexcept;
+};
+#endif // CXXBRIDGE1_RUST_OPTION
+
 #ifndef CXXBRIDGE1_RUST_VEC
 // https://cxx.rs/binding/vec.html
 template <typename T>
@@ -827,37 +906,129 @@ Box<T>::Box(uninit) noexcept {}
 #endif // CXXBRIDGE1_RUST_BOX
 
 #ifndef CXXBRIDGE1_RUST_OPTION
-template <typename T>
-class Option final {
-public:
-  Option() noexcept;
-  Option(Option&&) noexcept;
-  Option(T&&) noexcept;
-  ~Option() noexcept;
-
-  const T *operator->() const;
-  const T &operator*() const;
-  T *operator->();
-  T &operator*();
-
-  Option<T>& operator=(Option&&) noexcept;
-
-  bool has_value() const noexcept;
-  T& value() noexcept;
-  void reset();
-  void set(T&&) noexcept;
-private:
-  void* empty_;
-
-  T* value_ptr() noexcept;
-  void drop() noexcept;
-};
-#endif // CXXBRIDGE1_RUST_OPTION
-
-#ifndef CXXBRIDGE1_RUST_OPTION
 #define CXXBRIDGE1_RUST_OPTION
 template <typename T>
-Option<T>::Option(Option&& other) noexcept {
+Option<T&>::Option(Option&& other) noexcept {
+  new (this) Option();
+  if (other.has_value()) {
+    set(other.value());
+  }
+  new (&other) Option();
+}
+
+template <typename T>
+Option<T&>::Option(T& value) noexcept {
+  new (this) Option();
+  set(value);
+}
+
+template <typename T>
+Option<T&>::~Option() noexcept {
+  this->drop();
+}
+
+template <typename T>
+Option<T&>& Option<T&>::operator=(Option&& other) noexcept {
+  this->reset();
+  if (other.has_value()) {
+    set(other.value());
+  }
+  new (&other) Option();
+  return *this;
+}
+
+template <typename T>
+const T& Option<T&>::operator*() const noexcept {
+  return value();
+}
+
+template <typename T>
+const T* Option<T&>::operator->() const noexcept {
+  return &value();
+}
+
+template <typename T>
+T& Option<T&>::operator*() noexcept {
+  return value();
+}
+
+template <typename T>
+T* Option<T&>::operator->() noexcept {
+  return &value();
+}
+
+template <typename T>
+void Option<T&>::reset() {
+  this->drop();
+  new (this) Option();
+}
+
+//////// Option<const T&> ////////
+template <typename T>
+Option<const T&>::Option(const Option& other) noexcept {
+  new (this) Option();
+  if (other.has_value()) {
+    set(other.value());
+  }
+}
+
+template <typename T>
+Option<const T&>::Option(Option&& other) noexcept {
+  new (this) Option();
+  if (other.has_value()) {
+    set(other.value());
+  }
+  new (&other) Option();
+}
+
+template <typename T>
+Option<const T&>::Option(const T& value) noexcept {
+  new (this) Option();
+  set(value);
+}
+
+template <typename T>
+Option<const T&>::~Option() noexcept {
+  this->drop();
+}
+
+template <typename T>
+Option<const T&>& Option<const T&>::operator=(const Option& other) noexcept {
+  this->reset();
+  if (other.has_value()) {
+    set(other.value());
+  }
+  return *this;
+}
+
+template <typename T>
+Option<const T&>& Option<const T&>::operator=(Option&& other) noexcept {
+  this->reset();
+  if (other.has_value()) {
+    set(other.value());
+  }
+  new (&other) Option();
+  return *this;
+}
+
+template <typename T>
+const T& Option<const T&>::operator*() const noexcept {
+  return value();
+}
+
+template <typename T>
+const T* Option<const T&>::operator->() const noexcept {
+  return &value();
+}
+
+template <typename T>
+void Option<const T&>::reset() {
+  this->drop();
+  new (this) Option();
+}
+//////// Option<Box<T>> ////////////
+template <typename T>
+Option<Box<T>>::Option(Option&& other) noexcept {
   new (this) Option();
   if (other.has_value()) {
     set(std::move(other.value()));
@@ -866,12 +1037,18 @@ Option<T>::Option(Option&& other) noexcept {
 }
 
 template <typename T>
-Option<T>::~Option() noexcept {
+Option<Box<T>>::Option(Box<T>&& value) noexcept {
+  new (this) Option();
+  set(std::move(value));
+}
+
+template <typename T>
+Option<Box<T>>::~Option() noexcept {
   this->drop();
 }
 
 template <typename T>
-Option<T>& Option<T>::operator=(Option&& other) noexcept {
+Option<Box<T>>& Option<Box<T>>::operator=(Option&& other) noexcept {
   this->reset();
   if (other.has_value()) {
     set(std::move(other.value()));
@@ -881,36 +1058,30 @@ Option<T>& Option<T>::operator=(Option&& other) noexcept {
 }
 
 template <typename T>
-const T *Option<T>::operator->() const {
-  return &value();
-}
-
-template <typename T>
-const T &Option<T>::operator*() const {
+const Box<T>& Option<Box<T>>::operator*() const noexcept {
   return value();
 }
 
 template <typename T>
-T *Option<T>::operator->() {
-  return &value();
-}
-
-template <typename T>
-T &Option<T>::operator*() {
+const Box<T>& Option<Box<T>>::operator->() const noexcept {
   return value();
 }
 
 template <typename T>
-T &Option<T>::value() noexcept {
-  return *value_ptr();
+Box<T>& Option<Box<T>>::operator*() noexcept {
+  return value();
 }
 
 template <typename T>
-void Option<T>::reset() {
+Box<T>& Option<Box<T>>::operator->() noexcept {
+  return value();
+}
+
+template <typename T>
+void Option<Box<T>>::reset() {
   this->drop();
   new (this) Option();
 }
-
 #endif // CXXBRIDGE1_RUST_OPTION
 
 #ifndef CXXBRIDGE1_RUST_VEC
