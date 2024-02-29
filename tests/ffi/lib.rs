@@ -169,6 +169,7 @@ pub mod ffi {
         fn c_take_unique_ptr_vector_shared(v: UniquePtr<CxxVector<Shared>>);
         fn c_take_ref_vector(v: &CxxVector<u8>);
         fn c_take_rust_vec(v: Vec<u8>);
+        fn c_take_rust_vec_char(v: Vec<c_char>);
         fn c_take_rust_vec_shared(v: Vec<Shared>);
         fn c_take_rust_vec_string(v: Vec<String>);
         fn c_take_rust_vec_index(v: Vec<u8>);
@@ -191,6 +192,10 @@ pub mod ffi {
         fn c_take_rust_pin_mut_option_opaque(rust: Option<Pin<&mut R>>);
         fn c_take_rust_ref_option_native(rust: Option<&u8>);
         fn c_take_rust_mut_option_native(rust: Option<&mut u8>);
+        fn c_take_rust_ref_option_bool(rust: Option<&bool>);
+        fn c_take_rust_mut_option_bool(rust: Option<&mut bool>);
+        fn c_take_rust_ref_option_char(rust: Option<&c_char>);
+        fn c_take_rust_mut_option_char(rust: Option<&mut c_char>);
         fn c_take_rust_pin_mut_option_native(rust: Option<Pin<&mut u8>>);
         fn c_take_rust_ref_option_vec_native(rust: Option<&Vec<u8>>);
         fn c_take_rust_mut_option_vec_native(rust: Option<&mut Vec<u8>>);
