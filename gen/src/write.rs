@@ -820,7 +820,7 @@ fn write_cxx_function_shim<'a>(out: &mut OutFile<'a>, efn: &'a ExternFn) {
         if i > 0 {
             write!(out, ", ");
         }
-        if let Type::RustBox(_) = &arg.ty {
+        if let Type::RustBox(_) | Type::RustOption(_) = &arg.ty {
             write_type(out, &arg.ty);
             write!(out, "::from_raw({})", arg.name.cxx);
         } else if let Type::UniquePtr(_) = &arg.ty {
@@ -846,7 +846,7 @@ fn write_cxx_function_shim<'a>(out: &mut OutFile<'a>, efn: &'a ExternFn) {
     }
     write!(out, ")");
     match &efn.ret {
-        Some(Type::RustBox(_)) => write!(out, ".into_raw()"),
+        Some(Type::RustBox(_)) | Some(Type::RustOption(_)) => write!(out, ".into_raw()"),
         Some(Type::UniquePtr(_)) => write!(out, ".release()"),
         Some(Type::Str(_) | Type::SliceRef(_)) if !indirect_return => write!(out, ")"),
         _ => {}
@@ -1051,7 +1051,7 @@ fn write_rust_function_shim_impl(
     } else if let Some(ret) = &sig.ret {
         write!(out, "return ");
         match ret {
-            Type::RustBox(_) => {
+            Type::RustBox(_) | Type::RustOption(_) => {
                 write_type(out, ret);
                 write!(out, "::from_raw(");
             }
@@ -1092,7 +1092,7 @@ fn write_rust_function_shim_impl(
         }
         write!(out, "{}", arg.name.cxx);
         match &arg.ty {
-            Type::RustBox(_) => write!(out, ".into_raw()"),
+            Type::RustBox(_) | Type::RustOption(_) => write!(out, ".into_raw()"),
             Type::UniquePtr(_) => write!(out, ".release()"),
             ty if ty != RustString && out.types.needs_indirect_abi(ty) => write!(out, "$.value"),
             _ => {}
@@ -1115,7 +1115,12 @@ fn write_rust_function_shim_impl(
     write!(out, ")");
     if !indirect_return {
         if let Some(ret) = &sig.ret {
-            if let Type::RustBox(_) | Type::UniquePtr(_) | Type::Str(_) | Type::SliceRef(_) = ret {
+            if let Type::RustBox(_)
+            | Type::UniquePtr(_)
+            | Type::Str(_)
+            | Type::SliceRef(_)
+            | Type::RustOption(_) = ret
+            {
                 write!(out, ")");
             }
         }
@@ -1167,6 +1172,7 @@ fn write_indirect_return_type(out: &mut OutFile, ty: &Type) {
             }
             write!(out, "*");
         }
+        Type::RustOption(ty) => write_indirect_return_type(out, &ty.inner),
         _ => write_type(out, ty),
     }
 }
@@ -1174,7 +1180,7 @@ fn write_indirect_return_type(out: &mut OutFile, ty: &Type) {
 fn write_indirect_return_type_space(out: &mut OutFile, ty: &Type) {
     write_indirect_return_type(out, ty);
     match ty {
-        Type::RustBox(_) | Type::UniquePtr(_) | Type::Ref(_) => {}
+        Type::RustBox(_) | Type::UniquePtr(_) | Type::Ref(_) | Type::RustOption(_) => {}
         Type::Str(_) | Type::SliceRef(_) => write!(out, " "),
         _ => write_space_after_type(out, ty),
     }
@@ -1186,6 +1192,17 @@ fn write_extern_return_type_space(out: &mut OutFile, ty: Option<&Type>) {
             write_type_space(out, &ty.inner);
             write!(out, "*");
         }
+        Some(Type::RustOption(ty)) => match &ty.inner {
+            Type::RustBox(_) => write_extern_return_type_space(out, Some(&ty.inner)),
+            Type::Ref(r) => {
+                write_type_space(out, &r.inner);
+                if !r.mutable {
+                    write!(out, "const ");
+                }
+                write!(out, "*");
+            }
+            _ => unreachable!(),
+        },
         Some(Type::Ref(ty)) => {
             write_type_space(out, &ty.inner);
             if !ty.mutable {
@@ -1208,6 +1225,20 @@ fn write_extern_arg(out: &mut OutFile, arg: &Var) {
             write_type_space(out, &ty.inner);
             write!(out, "*");
         }
+        Type::RustOption(ty) => match &ty.inner {
+            Type::RustBox(b) => {
+                write_type_space(out, &b.inner);
+                write!(out, "*");
+            }
+            Type::Ref(r) => {
+                write_type_space(out, &r.inner);
+                if !r.mutable {
+                    write!(out, "const ");
+                }
+                write!(out, "*");
+            }
+            _ => unreachable!(),
+        },
         _ => write_type_space(out, &arg.ty),
     }
     if out.types.needs_indirect_abi(&arg.ty) {

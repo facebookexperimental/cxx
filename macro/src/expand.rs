@@ -468,8 +468,6 @@ fn expand_cxx_function_decl(efn: &ExternFn, types: &Types) -> TokenStream {
             quote!(#var #colon *const #ty)
         } else if let Type::RustVec(_) = arg.ty {
             quote!(#var #colon *const #ty)
-        } else if let Type::RustOption(_) = arg.ty {
-            quote!(#var #colon *const #ty)
         } else if let Type::Fn(_) = arg.ty {
             quote!(#var #colon ::cxx::private::FatFunction)
         } else if types.needs_indirect_abi(&arg.ty) {
@@ -552,7 +550,48 @@ fn expand_cxx_function_shim(efn: &ExternFn, types: &Types) -> TokenStream {
                 }
             }
             Type::RustVec(_) => quote_spanned!(span=> #var.as_mut_ptr() as *const ::cxx::private::RustVec<_>),
-            Type::RustOption(_) => quote_spanned!(span=> #var.as_mut_ptr() as *const ::cxx::private::RustOption<_>),
+            Type::RustOption(ty) => {
+                let improper;
+                let call = match &ty.inner {
+                    Type::RustBox(ty) => {
+                        improper = types.is_considered_improper_ctype(&ty.inner);
+                        quote_spanned!(span=> ::cxx::private::RustOption::from(#var))
+                    }
+                    Type::Ref(ty) => match &ty.inner {
+                        Type::Ident(ident) if ident.rust == RustString => {
+                            improper = false;
+                            match ty.mutable {
+                                false => quote_spanned!(span=> ::cxx::private::RustOption::from_option_string_ref(#var)),
+                                true => quote_spanned!(span=> ::cxx::private::RustOption::from_option_string_mut(#var)),
+                            }
+                        },
+                        Type::RustVec(vec) if vec.inner == RustString => {
+                            improper = false;
+                            match ty.mutable {
+                                false => quote_spanned!(span=> ::cxx::private::RustOption::from_option_vec_string_ref(#var)),
+                                true => quote_spanned!(span=> ::cxx::private::RustOption::from_option_vec_string_mut(#var)),
+                            }
+                        },
+                        Type::RustVec(_) => {
+                            improper = false;
+                            match ty.mutable {
+                                false => quote_spanned!(span=> ::cxx::private::RustOption::from_option_vec_ref(#var)),
+                                true => quote_spanned!(span=> ::cxx::private::RustOption::from_option_vec_mut(#var)),
+                            }
+                        },
+                        _ => {
+                            improper = types.is_considered_improper_ctype(&ty.inner);
+                            quote!(::cxx::private::RustOption::from(#var))
+                        }
+                    },
+                    _ => unreachable!(),
+                };
+                if improper {
+                    quote_spanned!(span=> #call.into_raw_improper())
+                } else {
+                    quote_spanned!(span=> #call.into_raw())
+                }
+            }
             Type::Ref(ty) => match &ty.inner {
                 Type::Ident(ident) if ident.rust == RustString => match ty.mutable {
                     false => quote_spanned!(span=> ::cxx::private::RustString::from_ref(#var)),
@@ -680,24 +719,43 @@ fn expand_cxx_function_shim(efn: &ExternFn, types: &Types) -> TokenStream {
                         quote_spanned!(span=> ::cxx::UniquePtr::from_raw(#call))
                     }
                 }
-                Type::RustOption(ty) => match &ty.inner {
-                    Type::Ref(r) => match &r.inner {
-                        Type::Ident(ident) if ident.rust == RustString => match r.mutable {
-                            false => quote_spanned!(span=> #call.into_option_string_ref()),
-                            true => quote_spanned!(span=> #call.into_option_string_mut()),
+                Type::RustOption(ty) => {
+                    let inner = &ty.inner;
+                    match &ty.inner {
+                        Type::Ref(r) => match &r.inner {
+                            Type::Ident(ident) if ident.rust == RustString => match r.mutable {
+                                false => {
+                                    quote_spanned!(span=> ::cxx::private::RustOption::<&_>::from_raw(#call).into_option_string_ref())
+                                }
+                                true => {
+                                    quote_spanned!(span=> ::cxx::private::RustOption::<&mut _>::from_raw(#call).into_option_string_mut())
+                                }
+                            },
+                            Type::RustVec(vec) if vec.inner == RustString => match r.mutable {
+                                false => {
+                                    quote_spanned!(span=> ::cxx::private::RustOption::<&_>::from_raw(#call).into_option_vec_string_ref())
+                                }
+                                true => {
+                                    quote_spanned!(span=> ::cxx::private::RustOption::<&mut _>::from_raw(#call).into_option_vec_string_mut())
+                                }
+                            },
+                            Type::RustVec(_) => match r.mutable {
+                                false => {
+                                    quote_spanned!(span=> ::cxx::private::RustOption::<&_>::from_raw(#call).into_option_vec_ref())
+                                }
+                                true => {
+                                    quote_spanned!(span=> ::cxx::private::RustOption::<&mut _>::from_raw(#call).into_option_vec_mut())
+                                }
+                            },
+                            _ => {
+                                quote_spanned!(span=> ::cxx::private::RustOption::<#inner>::from_raw(#call).into_option())
+                            }
                         },
-                        Type::RustVec(vec) if vec.inner == RustString => match r.mutable {
-                            false => quote_spanned!(span=> #call.into_option_vec_string_ref()),
-                            true => quote_spanned!(span=> #call.into_option_vec_string_mut()),
-                        },
-                        Type::RustVec(_) => match r.mutable {
-                            false => quote_spanned!(span=> #call.into_option_vec_ref()),
-                            true => quote_spanned!(span=> #call.into_option_vec_mut()),
-                        },
-                        _ => quote_spanned!(span=> #call.into_option()),
-                    },
-                    _ => quote_spanned!(span=> #call.into_option()),
-                },
+                        _ => {
+                            quote_spanned!(span=> ::cxx::private::RustOption::<#inner>::from_raw(#call).into_option())
+                        }
+                    }
+                }
                 Type::Ref(ty) => match &ty.inner {
                     Type::Ident(ident) if ident.rust == RustString => match ty.mutable {
                         false => quote_spanned!(span=> #call.as_string()),
@@ -1032,23 +1090,26 @@ fn expand_rust_function_shim_impl(
             }
             Type::RustOption(ty) => {
                 requires_unsafe = true;
+                let inner = &ty.inner;
                 match &ty.inner {
                     Type::Ref(r) => match &r.inner {
                         Type::Ident(i) if i.rust == RustString => match r.mutable {
-                            true => quote_spanned!(span=> ::cxx::core::mem::take((*#var).as_option_string_mut_mut())),
-                            false => quote_spanned!(span=>  ::cxx::core::mem::take((*#var).as_option_string_ref_mut())),
+                            true => quote_spanned!(span=> ::cxx::private::RustOption::<&mut _>::from_raw(#var).into_option_string_mut()),
+                            false => quote_spanned!(span=> ::cxx::private::RustOption::<&_>::from_raw(#var).into_option_string_ref()),
                         },
                         Type::RustVec(vec) if vec.inner == RustString => match r.mutable {
-                            true => quote_spanned!(span=> ::cxx::core::mem::take((*#var).as_option_vec_string_mut_mut())),
-                            false => quote_spanned!(span=> ::cxx::core::mem::take((*#var).as_option_vec_string_ref_mut())),
+                            true => quote_spanned!(span=> ::cxx::private::RustOption::<&mut _>::from_raw(#var).into_option_vec_string_mut()),
+                            false => quote_spanned!(span=> ::cxx::private::RustOption::<&_>::from_raw(#var).into_option_vec_string_ref()),
                         },
-                        Type::RustVec(_) => match r.mutable {
-                            true => quote_spanned!(span=> ::cxx::core::mem::take((*#var).as_option_vec_mut_mut())),
-                            false => quote_spanned!(span=> ::cxx::core::mem::take((*#var).as_option_vec_ref_mut())),
+                        Type::RustVec(_) => {
+                            match r.mutable {
+                                true => quote_spanned!(span=> ::cxx::private::RustOption::<&mut _>::from_raw(#var).into_option_vec_mut()),
+                                false => quote_spanned!(span=> ::cxx::private::RustOption::<&_>::from_raw(#var).into_option_vec_ref()),
+                            }
                         },
-                        _ => quote_spanned!(span=> ::cxx::core::mem::take((*#var).as_mut_option())),
+                        _ => quote_spanned!(span=> ::cxx::private::RustOption::<#inner>::from_raw(#var).into_option()),
                     }
-                    _ => quote_spanned!(span=> ::cxx::core::mem::take((*#var).as_mut_option())),
+                    _ => quote_spanned!(span=> ::cxx::private::RustOption::<#inner>::from_raw(#var).into_option()),
                 }
             }
             Type::UniquePtr(_) => {
@@ -1109,6 +1170,7 @@ fn expand_rust_function_shim_impl(
     call.extend(quote! { (#(#vars),*) });
 
     let span = body_span;
+    let mut process_converted = None;
     let conversion = sig.ret.as_ref().and_then(|ret| match ret {
         Type::Ident(ident) if ident.rust == RustString => {
             Some(quote_spanned!(span=> ::cxx::private::RustString::from))
@@ -1121,29 +1183,32 @@ fn expand_rust_function_shim_impl(
                 Some(quote_spanned!(span=> ::cxx::private::RustVec::from))
             }
         }
-        Type::RustOption(ty) => match &ty.inner {
-            Type::RustBox(_) => {
-                Some(quote_spanned!(span=> ::cxx::private::RustOption::from))
-            }
-            Type::Ref(r) => {
-                match &r.inner {
-                    Type::Ident(ident) if ident.rust == RustString => match r.mutable {
-                        false => return Some(quote_spanned!(span=> ::cxx::private::RustOption::from_option_string_ref)),
-                        true => return Some(quote_spanned!(span=> ::cxx::private::RustOption::from_option_string_mut)),
-                    },
-                    Type::RustVec(vec) if vec.inner == RustString => match r.mutable {
-                        false => return Some(quote_spanned!(span=> ::cxx::private::RustOption::from_option_vec_string_ref)),
-                        true => return Some(quote_spanned!(span=> ::cxx::private::RustOption::from_option_vec_string_mut)),
-                    },
-                    Type::RustVec(_) => match r.mutable {
-                        false => return Some(quote_spanned!(span=> ::cxx::private::RustOption::from_option_vec_ref)),
-                        true => return Some(quote_spanned!(span=> ::cxx::private::RustOption::from_option_vec_mut)),
-                    },
-                    _ => {},
+        Type::RustOption(ty) => {
+            process_converted = Some(quote_spanned!(span=> into_raw));
+            match &ty.inner {
+                Type::RustBox(_) => {
+                    Some(quote_spanned!(span=> ::cxx::private::RustOption::from))
                 }
-                Some(quote_spanned!(span=> ::cxx::private::RustOption::from))
+                Type::Ref(r) => {
+                    match &r.inner {
+                        Type::Ident(ident) if ident.rust == RustString => match r.mutable {
+                            false => return Some(quote_spanned!(span=> ::cxx::private::RustOption::from_option_string_ref)),
+                            true => return Some(quote_spanned!(span=> ::cxx::private::RustOption::from_option_string_mut)),
+                        },
+                        Type::RustVec(vec) if vec.inner == RustString => match r.mutable {
+                            false => return Some(quote_spanned!(span=> ::cxx::private::RustOption::from_option_vec_string_ref)),
+                            true => return Some(quote_spanned!(span=> ::cxx::private::RustOption::from_option_vec_string_mut)),
+                        },
+                        Type::RustVec(_) => match r.mutable {
+                            false => return Some(quote_spanned!(span=> ::cxx::private::RustOption::from_option_vec_ref)),
+                            true => return Some(quote_spanned!(span=> ::cxx::private::RustOption::from_option_vec_mut)),
+                        },
+                        _ => {},
+                    }
+                    Some(quote_spanned!(span=> ::cxx::private::RustOption::from))
+                }
+                _ => unreachable!(),
             }
-            _ => unreachable!(),
         },
         Type::UniquePtr(_) => Some(quote_spanned!(span=> ::cxx::UniquePtr::into_raw)),
         Type::Ref(ty) => match &ty.inner {
@@ -1173,11 +1238,19 @@ fn expand_rust_function_shim_impl(
         None => call,
         Some(conversion) if !sig.throws => {
             requires_closure = true;
-            quote_spanned!(span=> #conversion(#call))
+            if let Some(process_converted) = process_converted {
+                quote_spanned!(span=> #conversion(#call).#process_converted())
+            } else {
+                quote_spanned!(span=> #conversion(#call))
+            }
         }
         Some(conversion) => {
             requires_closure = true;
-            quote_spanned!(span=> ::cxx::core::result::Result::map(#call, #conversion))
+            if let Some(process_converted) = process_converted {
+                quote_spanned!(span=> ::cxx::core::result::Result::map(#call, |v| #conversion(v).#process_converted()))
+            } else {
+                quote_spanned!(span=> ::cxx::core::result::Result::map(#call, #conversion))
+            }
         }
     };
 
@@ -2135,21 +2208,51 @@ fn expand_extern_type(ty: &Type, types: &Types, proper: bool) -> TokenStream {
             let rangle = ty.rangle;
             quote_spanned!(span=> ::cxx::private::RustVec #langle #elem #rangle)
         }
-        Type::RustOption(ty) => {
-            let span = ty.name.span();
-            let langle = ty.langle;
-            let elem = match &ty.inner {
-                Type::RustBox(boxed) => {
-                    let langle = boxed.langle;
-                    let rangle = boxed.rangle;
-                    let elem = expand_extern_type(&boxed.inner, types, proper);
-                    quote_spanned!(span=> ::cxx::alloc::boxed::Box #langle #elem #rangle)
+        Type::RustOption(ty) => match &ty.inner {
+            Type::Ref(r) => {
+                let ampersand = r.ampersand;
+                let star = Token![*](ampersand.span);
+                match &r.inner {
+                    Type::Ident(ident) if ident.rust == RustString => {
+                        let span = ident.rust.span();
+                        match r.mutable {
+                            false => quote_spanned!(span=> #star const ::cxx::private::RustString),
+                            true => quote_spanned!(span=> #star mut ::cxx::private::RustString),
+                        }
+                    }
+                    Type::RustVec(ty) => {
+                        let span = ty.name.span();
+                        let langle = ty.langle;
+                        let inner = expand_extern_type(&ty.inner, types, proper);
+                        let rangle = ty.rangle;
+                        match r.mutable {
+                            false => {
+                                quote_spanned!(span=> #star const ::cxx::private::RustVec #langle #inner #rangle)
+                            }
+                            true => {
+                                quote_spanned!(span=> #star mut ::cxx::private::RustVec #langle #inner #rangle)
+                            }
+                        }
+                    }
+                    inner if proper && types.is_considered_improper_ctype(inner) => {
+                        let star = Token![*](ampersand.span);
+                        match r.mutable {
+                            false => quote!(#star const ::cxx::core::ffi::c_void),
+                            true => quote!(#star mut ::cxx::core::ffi::c_void),
+                        }
+                    }
+                    inner => {
+                        let star = Token![*](ampersand.span);
+                        match r.mutable {
+                            false => quote!(#star const #inner),
+                            true => quote!(#star mut #inner),
+                        }
+                    }
                 }
-                _ => expand_extern_type(&ty.inner, types, false),
-            };
-            let rangle = ty.rangle;
-            quote_spanned!(span=> ::cxx::private::RustOption #langle #elem #rangle)
-        }
+            }
+            Type::RustBox(_) => expand_extern_type(&ty.inner, types, proper),
+            _ => unreachable!(),
+        },
         Type::Ref(ty) => {
             let ampersand = ty.ampersand;
             let lifetime = &ty.lifetime;

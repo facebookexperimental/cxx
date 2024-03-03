@@ -120,6 +120,137 @@ impl<T: OptionTarget> RustOption<T> {
     }
 }
 
+impl<'a, T> RustOption<&'a T> {
+    pub fn into_raw(self) -> *const T {
+        self.into_option()
+            .map_or(core::ptr::null(), |v| v as *const T)
+    }
+
+    pub fn into_raw_improper(self) -> *const core::ffi::c_void {
+        self.into_option().map_or(core::ptr::null(), |v| {
+            v as *const T as *const core::ffi::c_void
+        })
+    }
+
+    /// SAFETY: ptr must be valid for 'a
+    pub unsafe fn from_raw(ptr: *const T) -> Self {
+        let mut this = RustOption::new();
+        if let Some(r) = unsafe { ptr.as_ref() } {
+            this.set(r);
+        }
+        this
+    }
+
+    /// SAFETY: ptr must be valid for 'a, and castable to *const T
+    pub unsafe fn from_raw_improper(ptr: *const core::ffi::c_void) -> Self {
+        let mut this = RustOption::new();
+        let ptr = ptr as *const T;
+        if let Some(r) = unsafe { ptr.as_ref() } {
+            this.set(r);
+        }
+        this
+    }
+}
+
+impl<'a, T> RustOption<&'a mut T> {
+    pub fn into_raw(self) -> *mut T {
+        self.into_option()
+            .map_or(core::ptr::null_mut(), |v| v as *mut T)
+    }
+
+    pub fn into_raw_improper(self) -> *mut core::ffi::c_void {
+        self.into_option().map_or(core::ptr::null_mut(), |v| {
+            v as *mut T as *mut core::ffi::c_void
+        })
+    }
+
+    /// SAFETY: ptr must be valid for 'a
+    pub unsafe fn from_raw(ptr: *mut T) -> Self {
+        let mut this = RustOption::new();
+        if let Some(r) = unsafe { ptr.as_mut() } {
+            this.set(r);
+        }
+        this
+    }
+
+    /// SAFETY: ptr must be valid for 'a, and castable to *mut T
+    pub unsafe fn from_raw_improper(ptr: *mut core::ffi::c_void) -> Self {
+        let mut this = RustOption::new();
+        let ptr = ptr as *mut T;
+        if let Some(r) = unsafe { ptr.as_mut() } {
+            this.set(r);
+        }
+        this
+    }
+}
+
+impl<'a, T> RustOption<Pin<&'a mut T>> {
+    pub fn into_raw(self) -> *mut T {
+        self.into_option()
+            .map_or(core::ptr::null_mut(), |v| unsafe {
+                v.get_unchecked_mut() as *mut T
+            })
+    }
+
+    pub fn into_raw_improper(self) -> *mut core::ffi::c_void {
+        self.into_option()
+            .map_or(core::ptr::null_mut(), |v| unsafe {
+                v.get_unchecked_mut() as *mut T as *mut core::ffi::c_void
+            })
+    }
+
+    /// SAFETY: ptr must be valid for 'a
+    pub unsafe fn from_raw(ptr: *mut T) -> Self {
+        let mut this = RustOption::new();
+        if let Some(r) = unsafe { ptr.as_mut() } {
+            this.set(unsafe { Pin::new_unchecked(r) });
+        }
+        this
+    }
+
+    /// SAFETY: ptr must be valid for 'a, and castable to *mut T
+    pub unsafe fn from_raw_improper(ptr: *mut core::ffi::c_void) -> Self {
+        let mut this = RustOption::new();
+        let ptr = ptr as *mut T;
+        if let Some(r) = unsafe { ptr.as_mut() } {
+            this.set(unsafe { Pin::new_unchecked(r) });
+        }
+        this
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl<T> RustOption<Box<T>> {
+    pub fn into_raw(self) -> *mut T {
+        self.into_option()
+            .map_or(core::ptr::null_mut(), |v| Box::into_raw(v))
+    }
+
+    pub fn into_raw_improper(self) -> *mut core::ffi::c_void {
+        self.into_option().map_or(core::ptr::null_mut(), |v| {
+            Box::into_raw(v) as *mut core::ffi::c_void
+        })
+    }
+
+    /// SAFETY: ptr must have originated from a `Option<Box<T>>`
+    pub unsafe fn from_raw(ptr: *mut T) -> Self {
+        let mut this = RustOption::new();
+        if !ptr.is_null() {
+            this.set(unsafe { Box::from_raw(ptr) });
+        }
+        this
+    }
+
+    /// SAFETY: ptr must have originated from a `Option<Box<T>>`
+    pub unsafe fn from_raw_improper(ptr: *mut core::ffi::c_void) -> Self {
+        let mut this = RustOption::new();
+        if !ptr.is_null() {
+            this.set(unsafe { Box::from_raw(ptr as *mut T) });
+        }
+        this
+    }
+}
+
 #[cfg(feature = "alloc")]
 impl<'a, T> RustOption<&'a RustVec<T>> {
     pub fn from_option_vec_ref(other: Option<&'a Vec<T>>) -> Self {

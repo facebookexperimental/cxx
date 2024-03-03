@@ -628,7 +628,7 @@ void c_take_ref_rust_vec_copy(const rust::Vec<uint8_t> &v) {
 }
 
 void c_take_rust_option_box(rust::Option<rust::Box<Shared>> opt) {
-  if (opt.has_value() && opt.value()->z == 2020 && opt->z == 2020) {
+  if (opt.has_value() && opt.value()->z == 2020 && (*opt)->z == 2020) {
     cxx_test_suite_set_correct();
   }
 }

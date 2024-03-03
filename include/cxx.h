@@ -320,6 +320,8 @@ public:
   T& value() noexcept;
   void reset();
   void set(T&) noexcept;
+  static Option<T&> from_raw(T*) noexcept;
+  T* into_raw() noexcept;
 private:
   void* repr;
 
@@ -344,6 +346,8 @@ public:
   const T& value() const noexcept;
   void reset();
   void set(const T&) noexcept;
+  static Option<const T&> from_raw(const T*) noexcept;
+  const T* into_raw() const noexcept;
 private:
   void* repr;
 
@@ -360,15 +364,20 @@ public:
 
   Option<Box<T>>& operator=(Option&&) noexcept;
   const Box<T>& operator*() const noexcept;
-  const Box<T>& operator->() const noexcept;
+  const Box<T>* operator->() const noexcept;
   Box<T>& operator*() noexcept;
-  Box<T>& operator->() noexcept;
+  Box<T>* operator->() noexcept;
 
   bool has_value() const noexcept;
   const Box<T>& value() const noexcept;
   Box<T>& value() noexcept;
   void reset();
   void set(Box<T>) noexcept;
+
+  // Important: requires that `raw` came from an into_raw call. Do not pass a
+  // pointer from `new` or any other source.
+  static Option<Box<T>> from_raw(T*) noexcept;
+  T* into_raw() noexcept;
 private:
   void* repr;
 
@@ -905,6 +914,7 @@ template <typename T>
 Box<T>::Box(uninit) noexcept {}
 #endif // CXXBRIDGE1_RUST_BOX
 
+
 #ifndef CXXBRIDGE1_RUST_OPTION
 #define CXXBRIDGE1_RUST_OPTION
 template <typename T>
@@ -963,6 +973,20 @@ void Option<T&>::reset() {
   new (this) Option();
 }
 
+template <typename T>
+Option<T&> Option<T&>::from_raw(T* ptr) noexcept {
+  Option<T&> opt{*ptr};
+  return opt;
+}
+
+template <typename T>
+T* Option<T&>::into_raw() noexcept {
+  if (has_value()) {
+    return &value();
+  } else {
+    return nullptr;
+  }
+}
 //////// Option<const T&> ////////
 template <typename T>
 Option<const T&>::Option(const Option& other) noexcept {
@@ -1026,6 +1050,21 @@ void Option<const T&>::reset() {
   this->drop();
   new (this) Option();
 }
+
+template <typename T>
+Option<const T&> Option<const T&>::from_raw(const T* ptr) noexcept {
+  Option<const T&> opt{*ptr};
+  return opt;
+}
+
+template <typename T>
+const T* Option<const T&>::into_raw() const noexcept {
+  if (has_value()) {
+    return &value();
+  } else {
+    return nullptr;
+  }
+}
 //////// Option<Box<T>> ////////////
 template <typename T>
 Option<Box<T>>::Option(Option&& other) noexcept {
@@ -1063,8 +1102,8 @@ const Box<T>& Option<Box<T>>::operator*() const noexcept {
 }
 
 template <typename T>
-const Box<T>& Option<Box<T>>::operator->() const noexcept {
-  return value();
+const Box<T>* Option<Box<T>>::operator->() const noexcept {
+  return &value();
 }
 
 template <typename T>
@@ -1073,14 +1112,29 @@ Box<T>& Option<Box<T>>::operator*() noexcept {
 }
 
 template <typename T>
-Box<T>& Option<Box<T>>::operator->() noexcept {
-  return value();
+Box<T>* Option<Box<T>>::operator->() noexcept {
+  return &value();
 }
 
 template <typename T>
 void Option<Box<T>>::reset() {
   this->drop();
   new (this) Option();
+}
+
+template <typename T>
+Option<Box<T>> Option<Box<T>>::from_raw(T* ptr) noexcept {
+  Option<Box<T>> opt{Box<T>::from_raw(ptr)};
+  return opt;
+}
+
+template <typename T>
+T* Option<Box<T>>::into_raw() noexcept {
+  if (has_value()) {
+    return value().into_raw();
+  } else {
+    return nullptr;
+  }
 }
 #endif // CXXBRIDGE1_RUST_OPTION
 
