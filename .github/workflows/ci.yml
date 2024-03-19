@@ -25,8 +25,7 @@ jobs:
           - rust: nightly
           - rust: beta
           - rust: stable
-          - rust: 1.63.0
-          - rust: 1.64.0
+          - rust: 1.60.0
           - rust: 1.70.0
           - rust: 1.74.0
           - name: Cargo on macOS
@@ -65,7 +64,11 @@ jobs:
         shell: bash
       - run: cargo run --manifest-path demo/Cargo.toml
       - run: cargo test --workspace ${{steps.testsuite.outputs.exclude}}
+<<<<<<< HEAD
         if: matrix.rust != '1.63.0' && matrix.rust != '1.64.0'
+=======
+        if: matrix.rust != '1.60.0'
+>>>>>>> 9e6e673f (Fix tests to work on respective MSRVs)
       - run: cargo check --no-default-features --features alloc
         env:
           RUSTFLAGS: --cfg compile_error_if_std ${{env.RUSTFLAGS}}
