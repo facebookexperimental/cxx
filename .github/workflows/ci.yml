@@ -25,7 +25,7 @@ jobs:
           - rust: nightly
           - rust: beta
           - rust: stable
-          - rust: 1.60.0
+          - rust: 1.63.0
           - rust: 1.74.0
           - name: Cargo on macOS
             rust: nightly
@@ -56,7 +56,7 @@ jobs:
         # builds.
         run: |
           echo RUSTFLAGS=$RUSTFLAGS >> $GITHUB_ENV
-          echo exclude=--exclude cxx-test-suite ${{matrix.rust == '1.60.0' && '--exclude cxxbridge-cmd' || ''}} >> $GITHUB_OUTPUT
+          echo exclude=--exclude cxx-test-suite ${{matrix.rust == '1.63.0' && '--exclude cxxbridge-cmd' || ''}} >> $GITHUB_OUTPUT
         env:
           RUSTFLAGS: ${{env.RUSTFLAGS}} ${{matrix.os && github.event_name != 'schedule' && '--cfg skip_ui_tests' || ''}}
         id: testsuite
