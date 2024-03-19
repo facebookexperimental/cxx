@@ -1446,22 +1446,12 @@ impl<'a> ToMangled for RustOption<'a> {
     fn to_mangled(&self, types: &Types) -> Symbol {
         match self {
             RustOption::RustBox(inner) => symbol::join(&[&"Box", &inner.to_mangled(types)]),
-            RustOption::Ref(inner) => {
-                let symbol = symbol::join(&[&"const", &inner.to_mangled(types)]);
-                symbol
-            }
-            RustOption::MutRef(inner) => {
-                let symbol = symbol::join(&[&inner.to_mangled(types)]);
-                symbol
-            }
+            RustOption::Ref(inner) => symbol::join(&[&"const", &inner.to_mangled(types)]),
+            RustOption::MutRef(inner) => symbol::join(&[&inner.to_mangled(types)]),
             RustOption::RefVec(inner) => {
-                let symbol = symbol::join(&[&"const", &"Vec", &inner.to_mangled(types)]);
-                symbol
+                symbol::join(&[&"const", &"Vec", &inner.to_mangled(types)])
             }
-            RustOption::MutRefVec(inner) => {
-                let symbol = symbol::join(&[&"Vec", &inner.to_mangled(types)]);
-                symbol
-            }
+            RustOption::MutRefVec(inner) => symbol::join(&[&"Vec", &inner.to_mangled(types)]),
         }
     }
 }
