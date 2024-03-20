@@ -846,7 +846,7 @@ fn write_cxx_function_shim<'a>(out: &mut OutFile<'a>, efn: &'a ExternFn) {
     }
     write!(out, ")");
     match &efn.ret {
-        Some(Type::RustBox(_)) | Some(Type::RustOption(_)) => write!(out, ".into_raw()"),
+        Some(Type::RustBox(_) | Type::RustOption(_)) => write!(out, ".into_raw()"),
         Some(Type::UniquePtr(_)) => write!(out, ".release()"),
         Some(Type::Str(_) | Type::SliceRef(_)) if !indirect_return => write!(out, ")"),
         _ => {}
