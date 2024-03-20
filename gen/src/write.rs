@@ -1587,7 +1587,7 @@ fn write_rust_option_extern(out: &mut OutFile, inner: OptionInner) {
     let (element, is_const, value_type) = match inner {
         OptionInner::RustBox(key) => {
             let element = RustOption::RustBox(key.rust);
-            let value_type = element.to_typename(out.types) ;
+            let value_type = element.to_typename(out.types);
             (element, false, value_type)
         }
         OptionInner::Ref(key) => {
@@ -1799,9 +1799,7 @@ fn write_rust_vec_impl(out: &mut OutFile, key: NamedImplKey) {
 
 fn write_rust_option_impl(out: &mut OutFile, inner: OptionInner) {
     let (element, is_const, value_needs_ref) = match inner {
-        OptionInner::RustBox(key) => {
-            (RustOption::RustBox(key.rust), false, true)
-        }
+        OptionInner::RustBox(key) => (RustOption::RustBox(key.rust), false, true),
         OptionInner::Ref(key) => {
             if out.types.try_resolve(key.rust).is_none() {
                 return;
@@ -1876,9 +1874,17 @@ fn write_rust_option_impl(out: &mut OutFile, inner: OptionInner) {
         writeln!(out, "template <>");
         begin_function_definition(out);
         if value_needs_ref {
-            writeln!(out, "const {0}& Option<{0}>::value() const noexcept {{", inner);
+            writeln!(
+                out,
+                "const {0}& Option<{0}>::value() const noexcept {{",
+                inner
+            );
         } else {
-            writeln!(out, "const {0} Option<{0}>::value() const noexcept {{", inner);
+            writeln!(
+                out,
+                "const {0} Option<{0}>::value() const noexcept {{",
+                inner
+            );
         }
         writeln!(
             out,

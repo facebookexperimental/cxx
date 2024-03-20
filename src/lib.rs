@@ -512,8 +512,8 @@ pub mod private {
     pub use crate::opaque::Opaque;
     #[cfg(feature = "alloc")]
     pub use crate::result::{r#try, Result};
-    pub use crate::rust_option::RustOption;
     pub use crate::rust_option::assert_option_safe;
+    pub use crate::rust_option::RustOption;
     pub use crate::rust_slice::RustSlice;
     pub use crate::rust_str::RustStr;
     #[cfg(feature = "alloc")]

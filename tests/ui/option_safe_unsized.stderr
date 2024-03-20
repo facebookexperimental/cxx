@@ -1,8 +1,8 @@
 error[E0080]: evaluation of `cxx::private::assert_option_safe::__SizeCheck::<&str>::_IS_OPTION_SIZE` failed
  --> src/rust_option.rs
   |
-  |             assert!(mem::size_of::<Option<U>>() == mem::size_of::<Repr>());
-  |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'assertion failed: mem::size_of::<Option<U>>() == mem::size_of::<Repr>()', $DIR/src/rust_option.rs:50:13
+  |         const _IS_OPTION_SIZE: () = assert!(mem::size_of::<Option<U>>() == mem::size_of::<Repr>());
+  |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'assertion failed: mem::size_of::<Option<U>>() == mem::size_of::<Repr>()', $DIR/src/rust_option.rs:50:37
   |
   = note: this error originates in the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
 

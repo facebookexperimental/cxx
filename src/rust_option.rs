@@ -34,7 +34,8 @@ impl<T: Sized> private::Sealed for Box<T> {}
 #[cfg(feature = "alloc")]
 impl<T: Sized> OptionTarget for Box<T> {}
 
-type Repr = [mem::MaybeUninit<usize>; mem::size_of::<Option<&()>>() / core::mem::size_of::<usize>()];
+type Repr =
+    [mem::MaybeUninit<usize>; mem::size_of::<Option<&()>>() / core::mem::size_of::<usize>()];
 
 // ABI compatible with C++ rust::Option<T> (not necessarily core::option::Option<T>).
 #[repr(C)]
@@ -46,14 +47,10 @@ pub struct RustOption<T: OptionTarget> {
 pub const fn assert_option_safe<T>() {
     struct __SizeCheck<U>(core::marker::PhantomData<U>);
     impl<U> __SizeCheck<U> {
-        const _IS_OPTION_SIZE: () =
-            assert!(mem::size_of::<Option<U>>() == mem::size_of::<Repr>());
-        const _IS_USIZE: () =
-            assert!(mem::size_of::<Repr>() == mem::size_of::<usize>());
-        const _IS_NICHE: () =
-            assert!(mem::size_of::<Option<U>>() == mem::size_of::<U>());
-        const _IS_USIZE_ALIGN: () =
-            assert!(mem::align_of::<Repr>() == mem::align_of::<usize>());
+        const _IS_OPTION_SIZE: () = assert!(mem::size_of::<Option<U>>() == mem::size_of::<Repr>());
+        const _IS_USIZE: () = assert!(mem::size_of::<Repr>() == mem::size_of::<usize>());
+        const _IS_NICHE: () = assert!(mem::size_of::<Option<U>>() == mem::size_of::<U>());
+        const _IS_USIZE_ALIGN: () = assert!(mem::align_of::<Repr>() == mem::align_of::<usize>());
         const _IS_OPTION_ALIGN: () =
             assert!(mem::align_of::<Option<U>>() == mem::align_of::<Repr>());
     }
@@ -266,6 +263,7 @@ impl<'a, T> RustOption<&'a RustVec<T>> {
             .into_option()
     }
 
+    #[allow(clippy::ref_option_ref)]
     pub fn as_option_vec_ref(&self) -> &Option<&'a Vec<T>> {
         unsafe { &*(self as *const RustOption<&RustVec<T>> as *const RustOption<&Vec<T>>) }
             .as_option()
@@ -350,12 +348,10 @@ impl<'a> RustOption<&'a mut RustVec<RustString>> {
 
     pub fn as_option_vec_string_mut_mut(&mut self) -> &mut Option<&'a mut Vec<String>> {
         unsafe {
-            core::mem::transmute::<
-                &mut RustOption<&mut RustVec<RustString>>,
-                &mut RustOption<&mut Vec<String>>,
-            >(self)
-            .as_mut_option()
+            &mut *(self as *mut RustOption<&mut RustVec<RustString>>
+                as *mut RustOption<&mut Vec<String>>)
         }
+        .as_mut_option()
     }
 }
 
@@ -398,12 +394,8 @@ impl<'a> RustOption<&'a mut RustString> {
     }
 
     pub fn as_option_string_mut_mut(&mut self) -> &mut Option<&'a mut String> {
-        unsafe {
-            core::mem::transmute::<&mut RustOption<&mut RustString>, &mut RustOption<&mut String>>(
-                self,
-            )
+        unsafe { &mut *(self as *mut RustOption<&mut RustString> as *mut RustOption<&mut String>) }
             .as_mut_option()
-        }
     }
 }
 

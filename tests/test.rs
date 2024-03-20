@@ -35,6 +35,7 @@ macro_rules! check {
 }
 
 #[test]
+#[allow(clippy::too_many_lines)]
 fn test_c_return() {
     let mut shared = ffi::Shared { z: 2020 };
     let ns_shared = ffi::AShared { z: 2020 };
@@ -179,6 +180,7 @@ fn test_c_try_return() {
 }
 
 #[test]
+#[allow(clippy::too_many_lines)]
 fn test_c_take() {
     let unique_ptr = ffi::c_return_unique_ptr();
     let unique_ptr_ns = ffi2::c_return_ns_unique_ptr();
