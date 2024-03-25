@@ -52,6 +52,8 @@ pub(super) fn write(out: &mut OutFile) {
     let out = &mut builtin.content;
 
     if builtin.rust_option {
+        builtin.rust_string = true;
+        builtin.rust_vec = true;
         builtin.rust_box = true;
     }
 

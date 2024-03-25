@@ -20,6 +20,9 @@ mod private {
     pub trait Sealed {}
 }
 pub trait OptionPtrTarget: private::Sealed {}
+pub trait OptionRepr: private::Sealed {
+    type Repr;
+}
 
 impl<T: Sized> private::Sealed for &T {}
 impl<T: Sized> OptionPtrTarget for &T {}
@@ -34,6 +37,19 @@ impl<T: Sized> OptionPtrTarget for Pin<&mut T> {}
 impl<T: Sized> private::Sealed for Box<T> {}
 #[cfg(feature = "alloc")]
 impl<T: Sized> OptionPtrTarget for Box<T> {}
+
+pub const fn assert_option_safe<T, Repr, Expected>() {
+    struct __SizeCheck<U, V, W>(core::marker::PhantomData<(U, V, W)>);
+    impl<U, V, W> __SizeCheck<U, V, W> {
+        const _IS_OPTION_SIZE: () = assert!(mem::size_of::<U>() == mem::size_of::<V>());
+        const _IS_REPR_ALIGN: () = assert!(mem::align_of::<V>() == mem::align_of::<W>());
+        const _IS_OPTION_ALIGN: () = assert!(mem::align_of::<U>() == mem::align_of::<V>());
+    }
+    // Force the constants to resolve (at compile time)
+    let _: () = __SizeCheck::<T, Repr, Expected>::_IS_OPTION_SIZE;
+    let _: () = __SizeCheck::<T, Repr, Expected>::_IS_REPR_ALIGN;
+    let _: () = __SizeCheck::<T, Repr, Expected>::_IS_OPTION_ALIGN;
+}
 
 pub trait OptionFfi: private::Sealed {
     type Target;
@@ -82,93 +98,90 @@ pub trait OptionFfiInverse: private::Sealed + Sized {
 /// Defined a struct named RustOption and implements OptionFfi for Option with it as target
 macro_rules! impl_option_ffi {
     // Like `impl<T: Bound> RustOption<T>` where you need some bound on T
-    (<$generic:ident: $bound:path>, $repr:ty, $sizing:ty) => {
-        impl_option_ffi!(_private: generics=<>, bounded_generics=<$generic: $bound>, option_ty=$generic, repr=$repr, sizing=$sizing)
+    ($name:ident<$generic:ident: $bound:path>, $repr:ty, $sizing:ty) => {
+        impl_option_ffi!(_private: name=$name, generics=<>, bounded_generics=<$generic: $bound>, option_ty=$generic, repr=$repr, sizing=$sizing)
     };
     // Like `impl<T> RustOption<S<T>>` for some concrete S and generic T
-    (<$generic:ident>, $t:ty, $repr:ty, $sizing:ty) => {
-        impl_option_ffi!(_private: generics=<$generic>, bounded_generics=<>, option_ty=$t, repr=$repr, sizing=$sizing)
+    ($name:ident<$generic:ident>, $t:ty, $repr:ty, $sizing:ty) => {
+        impl_option_ffi!(_private: name=$name, generics=<$generic>, bounded_generics=<>, option_ty=$t, repr=$repr, sizing=$sizing)
     };
     // Like `impl RustOption<T>` for some non-generic T
-    (<$t:ident>, $repr:ty, $sizing:ty) => {
-        impl_option_ffi!(_private: generics=<>, bounded_generics=<>, option_ty=$t, repr=$repr, sizing=$sizing)
+    ($name:ident<$t:ident>, $repr:ty, $sizing:ty) => {
+        impl_option_ffi!(_private: name=$name, generics=<>, bounded_generics=<>, option_ty=$t, repr=$repr, sizing=$sizing)
     };
     // Private case. Does the actual implementation
-    (_private: generics=<$($generic1:ident),*>, bounded_generics=<$($generic2:ident: $bound:path),*>, option_ty=$option_ty:ty, repr=$repr:ty, sizing=$sizing:ty) => {
-        type Repr = [mem::MaybeUninit<$repr>; mem::size_of::<Option<$sizing>>() / mem::size_of::<$repr>()];
-
+    (_private: name=$name:ident, generics=<$($generic1:ident),*>, bounded_generics=<$($generic2:ident: $bound:path),*>, option_ty=$option_ty:ty, repr=$repr:ty, sizing=$sizing:ty) => {
         // ABI compatible with C++ rust::Option<T> for (not necessarily core::option::Option<T>).
-        pub struct RustOption<$($generic1),* $($generic2: $bound),*> {
+        pub struct $name<$($generic1),* $($generic2: $bound),*> {
             #[allow(dead_code)]
-            repr: Repr,
+            repr: [mem::MaybeUninit<$repr>; mem::size_of::<Option<$sizing>>() / mem::size_of::<$repr>()],
             phantom: core::marker::PhantomData<Option<$option_ty>>,
         }
 
-        pub const fn assert_option_safe<T>() {
-            struct __SizeCheck<U>(core::marker::PhantomData<U>);
-            impl<U> __SizeCheck<U> {
-                const _IS_OPTION_SIZE: () =
-                    assert!(mem::size_of::<Option<U>>() == mem::size_of::<Repr>());
-                const _IS_REPR_ALIGN: () =
-                    assert!(mem::align_of::<Repr>() == mem::align_of::<$repr>());
-                const _IS_OPTION_ALIGN: () =
-                    assert!(mem::align_of::<Option<U>>() == mem::align_of::<Repr>());
-            }
-            // Force the constants to resolve (at compile time)
-            let _: () = __SizeCheck::<T>::_IS_OPTION_SIZE;
-            let _: () = __SizeCheck::<T>::_IS_REPR_ALIGN;
-            let _: () = __SizeCheck::<T>::_IS_OPTION_ALIGN;
+        impl<$($generic1),* $($generic2: $bound),*> private::Sealed for $name<$($generic1),* $($generic2),*> {}
+
+        impl<$($generic1),* $($generic2: $bound),*> OptionRepr for $name<$($generic1),* $($generic2),*> {
+            type Repr = [mem::MaybeUninit<$repr>; mem::size_of::<Option<$sizing>>() / mem::size_of::<$repr>()];
         }
+
+        impl<$($generic1),* $($generic2: $bound),*> $name<$($generic1),* $($generic2),*> {
+            pub fn has_value(&self) -> bool {
+                self.as_option().is_some()
+            }
+
+            pub fn set(&mut self, value: $option_ty) {
+                self.as_mut_option().replace(value);
+            }
+        }
+
 
         impl<$($generic1),* $($generic2: $bound),*> private::Sealed for Option<$option_ty> {}
 
         impl<$($generic1),* $($generic2: $bound),*> OptionFfi for Option<$option_ty> {
-            type Target = RustOption<$($generic1),* $($generic2),*>;
+            type Target = $name<$($generic1),* $($generic2),*>;
 
             fn new_ffi() -> Self::Target {
                 Self::None.into_ffi()
             }
 
             fn into_ffi(self) -> Self::Target {
-                let _: () = assert_option_safe::<$option_ty>();
+                let _: () = assert_option_safe::<$option_ty, <Self::Target as OptionRepr>::Repr, Option<$sizing>>();
                 let v = unsafe { core::mem::transmute_copy(&self) };
                 core::mem::forget(self);
                 v
             }
 
             fn as_ffi(&self) -> &Self::Target {
-                let _: () = assert_option_safe::<$option_ty>();
+                let _: () = assert_option_safe::<$option_ty, <Self::Target as OptionRepr>::Repr, Option<$sizing>>();
                 unsafe { &*(self as *const Self as *const Self::Target) }
             }
 
             fn as_mut_ffi(&mut self) -> &mut Self::Target {
-                let _: () = assert_option_safe::<$option_ty>();
+                let _: () = assert_option_safe::<$option_ty, <Self::Target as OptionRepr>::Repr, Option<$sizing>>();
                 unsafe { &mut *(self as *mut Self as *mut Self::Target) }
             }
 
             fn from_ffi(mut other: Self::Target) -> Self {
-                let _: () = assert_option_safe::<$option_ty>();
+                let _: () = assert_option_safe::<$option_ty, <Self::Target as OptionRepr>::Repr, Option<$sizing>>();
                 Self::from_ffi_mut(&mut other).take()
             }
 
             fn from_ffi_ref(other: &Self::Target) -> &Self {
-                let _: () = assert_option_safe::<$option_ty>();
+                let _: () = assert_option_safe::<$option_ty, <Self::Target as OptionRepr>::Repr, Option<$sizing>>();
                 unsafe { &*(other as *const Self::Target as *const Self) }
             }
 
             fn from_ffi_mut(other: &mut Self::Target) -> &mut Self {
-                let _: () = assert_option_safe::<$option_ty>();
+                let _: () = assert_option_safe::<$option_ty, <Self::Target as OptionRepr>::Repr, Option<$sizing>>();
                 unsafe { &mut *(other as *mut Self::Target as *mut Self) }
             }
         }
 
-        impl<$($generic1),* $($generic2: $bound),*> private::Sealed for RustOption<$($generic1),* $($generic2),*> {}
-
-        impl<$($generic1),* $($generic2: $bound),*> OptionFfiInverse for RustOption<$($generic1),* $($generic2),*> {
+        impl<$($generic1),* $($generic2: $bound),*> OptionFfiInverse for $name<$($generic1),* $($generic2),*> {
             type Target = Option<$option_ty>;
         }
 
-        impl<$($generic1),* $($generic2: $bound),*> Drop for RustOption<$($generic1),* $($generic2),*> {
+        impl<$($generic1),* $($generic2: $bound),*> Drop for $name<$($generic1),* $($generic2),*> {
             fn drop(&mut self) {
                 self.as_mut_option().take();
             }
@@ -178,21 +191,9 @@ macro_rules! impl_option_ffi {
 
 // Pointer-sized pointer types with niche optimization
 const _: () = {
-    impl_option_ffi! { <T: OptionPtrTarget>, usize, &'static () }
+    impl_option_ffi! { RustOption<T: OptionPtrTarget>, usize, &'static () }
 
     impl<T: OptionPtrTarget> RustOption<T> {
-        pub fn value(&self) -> Option<&T> {
-            self.as_option().as_ref()
-        }
-
-        pub fn has_value(&self) -> bool {
-            self.as_option().is_some()
-        }
-
-        pub fn set(&mut self, value: T) {
-            self.as_mut_option().replace(value);
-        }
-
         pub unsafe fn as_ref_mut_inner_unchecked(&mut self) -> &mut T {
             unsafe { self.as_mut_option().as_mut().unwrap_unchecked() }
         }
@@ -344,12 +345,16 @@ const _: () = {
                 .into_option()
         }
 
-        pub fn as_option_vec_ref<'b>(this: &'b RustOption<&'a RustVec<T>>) -> &'b Option<&'a Vec<T>> {
+        pub fn as_option_vec_ref<'b>(
+            this: &'b RustOption<&'a RustVec<T>>,
+        ) -> &'b Option<&'a Vec<T>> {
             unsafe { &*(this as *const RustOption<&RustVec<T>> as *const RustOption<&Vec<T>>) }
                 .as_option()
         }
 
-        pub fn as_option_vec_ref_mut<'b>(this: &'b mut RustOption<&'a RustVec<T>>) -> &'b mut Option<&'a Vec<T>> {
+        pub fn as_option_vec_ref_mut<'b>(
+            this: &'b mut RustOption<&'a RustVec<T>>,
+        ) -> &'b mut Option<&'a Vec<T>> {
             unsafe { &mut *(this as *mut RustOption<&RustVec<T>> as *mut RustOption<&Vec<T>>) }
                 .as_mut_option()
         }
@@ -366,7 +371,9 @@ const _: () = {
 
     #[cfg(feature = "alloc")]
     impl<'a, T> RustOption<&'a mut Vec<T>> {
-        pub fn from_option_vec_mut(other: Option<&'a mut Vec<T>>) -> RustOption<&'a mut RustVec<T>> {
+        pub fn from_option_vec_mut(
+            other: Option<&'a mut Vec<T>>,
+        ) -> RustOption<&'a mut RustVec<T>> {
             unsafe {
                 core::mem::transmute::<RustOption<&mut Vec<T>>, RustOption<&mut RustVec<T>>>(
                     RustOption::from_option(other),
@@ -381,7 +388,9 @@ const _: () = {
             .into_option()
         }
 
-        pub fn as_option_vec_mut<'b>(this: &'b RustOption<&'a mut RustVec<T>>) -> &'b Option<&'a mut Vec<T>> {
+        pub fn as_option_vec_mut<'b>(
+            this: &'b RustOption<&'a mut RustVec<T>>,
+        ) -> &'b Option<&'a mut Vec<T>> {
             unsafe {
                 &*(this as *const RustOption<&'a mut RustVec<T>>
                     as *const RustOption<&'a mut Vec<T>>)
@@ -389,7 +398,9 @@ const _: () = {
             .as_option()
         }
 
-        pub fn as_option_vec_mut_mut<'b>(this: &'b mut RustOption<&'a mut RustVec<T>>) -> &'b mut Option<&'a mut Vec<T>> {
+        pub fn as_option_vec_mut_mut<'b>(
+            this: &'b mut RustOption<&'a mut RustVec<T>>,
+        ) -> &'b mut Option<&'a mut Vec<T>> {
             unsafe {
                 &mut *(this as *mut RustOption<&'a mut RustVec<T>>
                     as *mut RustOption<&'a mut Vec<T>>)
@@ -411,7 +422,9 @@ const _: () = {
 
     #[cfg(feature = "alloc")]
     impl<'a> RustOption<&'a Vec<String>> {
-        pub fn from_option_vec_string_ref(other: Option<&'a Vec<String>>) -> RustOption<&'a RustVec<RustString>> {
+        pub fn from_option_vec_string_ref(
+            other: Option<&'a Vec<String>>,
+        ) -> RustOption<&'a RustVec<RustString>> {
             unsafe {
                 core::mem::transmute::<RustOption<&Vec<String>>, RustOption<&RustVec<RustString>>>(
                     RustOption::from_option(other),
@@ -419,7 +432,9 @@ const _: () = {
             }
         }
 
-        pub fn into_option_vec_string_ref(this: RustOption<&'a RustVec<RustString>>) -> Option<&'a Vec<String>> {
+        pub fn into_option_vec_string_ref(
+            this: RustOption<&'a RustVec<RustString>>,
+        ) -> Option<&'a Vec<String>> {
             unsafe {
                 core::mem::transmute::<RustOption<&RustVec<RustString>>, RustOption<&Vec<String>>>(
                     this,
@@ -428,7 +443,9 @@ const _: () = {
             .into_option()
         }
 
-        pub fn as_option_vec_string_ref_mut<'b>(this: &'b mut RustOption<&'a RustVec<RustString>>) -> &'b mut Option<&'a Vec<String>> {
+        pub fn as_option_vec_string_ref_mut<'b>(
+            this: &'b mut RustOption<&'a RustVec<RustString>>,
+        ) -> &'b mut Option<&'a Vec<String>> {
             unsafe {
                 &mut *(this as *mut RustOption<&RustVec<RustString>>
                     as *mut RustOption<&Vec<String>>)
@@ -437,7 +454,9 @@ const _: () = {
         }
 
         /// SAFETY: ptr must be valid for 'a
-        pub unsafe fn from_raw_double_repr(ptr: *const RustVec<RustString>) -> RustOption<&'a RustVec<RustString>> {
+        pub unsafe fn from_raw_double_repr(
+            ptr: *const RustVec<RustString>,
+        ) -> RustOption<&'a RustVec<RustString>> {
             unsafe { RustOption::<&RustVec<RustString>>::from_raw(ptr) }
         }
 
@@ -454,7 +473,9 @@ const _: () = {
 
     #[cfg(feature = "alloc")]
     impl<'a> RustOption<&'a mut Vec<String>> {
-        pub fn from_option_vec_string_mut(other: Option<&'a mut Vec<String>>) -> RustOption<&'a mut RustVec<RustString>> {
+        pub fn from_option_vec_string_mut(
+            other: Option<&'a mut Vec<String>>,
+        ) -> RustOption<&'a mut RustVec<RustString>> {
             unsafe {
                 core::mem::transmute::<
                     RustOption<&mut Vec<String>>,
@@ -463,7 +484,9 @@ const _: () = {
             }
         }
 
-        pub fn into_option_vec_string_mut(this: RustOption<&'a mut RustVec<RustString>>) -> Option<&'a mut Vec<String>> {
+        pub fn into_option_vec_string_mut(
+            this: RustOption<&'a mut RustVec<RustString>>,
+        ) -> Option<&'a mut Vec<String>> {
             unsafe {
                 core::mem::transmute::<
                     RustOption<&mut RustVec<RustString>>,
@@ -473,18 +496,20 @@ const _: () = {
             .into_option()
         }
 
-        pub fn as_option_vec_string_mut_mut<'b>(this: &'b mut RustOption<&'a mut RustVec<RustString>>) -> &'b mut Option<&'a mut Vec<String>> {
+        pub fn as_option_vec_string_mut_mut<'b>(
+            this: &'b mut RustOption<&'a mut RustVec<RustString>>,
+        ) -> &'b mut Option<&'a mut Vec<String>> {
             unsafe {
-                core::mem::transmute::<
-                    &mut RustOption<&mut RustVec<RustString>>,
-                    &mut RustOption<&mut Vec<String>>,
-                >(this)
-                .as_mut_option()
+                (*(this as *mut RustOption<&mut RustVec<RustString>>
+                    as *mut RustOption<&mut Vec<String>>))
+                    .as_mut_option()
             }
         }
 
         /// SAFETY: ptr must be valid for 'a
-        pub unsafe fn from_raw_double_repr(ptr: *mut RustVec<RustString>) -> RustOption<&'a mut RustVec<RustString>> {
+        pub unsafe fn from_raw_double_repr(
+            ptr: *mut RustVec<RustString>,
+        ) -> RustOption<&'a mut RustVec<RustString>> {
             unsafe { RustOption::<&mut RustVec<RustString>>::from_raw(ptr) }
         }
 
@@ -515,7 +540,9 @@ const _: () = {
                 .into_option()
         }
 
-        pub fn as_option_string_ref_mut<'b>(this: &'b mut RustOption<&'a RustString>) -> &'b mut Option<&'a String> {
+        pub fn as_option_string_ref_mut<'b>(
+            this: &'b mut RustOption<&'a RustString>,
+        ) -> &'b mut Option<&'a String> {
             unsafe { &mut *(this as *mut RustOption<&RustString> as *mut RustOption<&String>) }
                 .as_mut_option()
         }
@@ -532,7 +559,9 @@ const _: () = {
 
     #[cfg(feature = "alloc")]
     impl<'a> RustOption<&'a mut String> {
-        pub fn from_option_string_mut(other: Option<&'a mut String>) -> RustOption<&'a mut RustString> {
+        pub fn from_option_string_mut(
+            other: Option<&'a mut String>,
+        ) -> RustOption<&'a mut RustString> {
             unsafe {
                 core::mem::transmute::<RustOption<&mut String>, RustOption<&mut RustString>>(
                     RustOption::from_option(other),
@@ -540,19 +569,21 @@ const _: () = {
             }
         }
 
-        pub fn into_option_string_mut(this: RustOption<&'a mut RustString>) -> Option<&'a mut String> {
+        pub fn into_option_string_mut(
+            this: RustOption<&'a mut RustString>,
+        ) -> Option<&'a mut String> {
             unsafe {
                 core::mem::transmute::<RustOption<&mut RustString>, RustOption<&mut String>>(this)
             }
             .into_option()
         }
 
-        pub fn as_option_string_mut_mut<'b>(this: &'b mut RustOption<&'a mut RustString>) -> &'b mut Option<&'a mut String> {
+        pub fn as_option_string_mut_mut<'b>(
+            this: &'b mut RustOption<&'a mut RustString>,
+        ) -> &'b mut Option<&'a mut String> {
             unsafe {
-                core::mem::transmute::<&mut RustOption<&mut RustString>, &mut RustOption<&mut String>>(
-                    this,
-                )
-                .as_mut_option()
+                (*(this as *mut RustOption<&mut RustString> as *mut RustOption<&mut String>))
+                    .as_mut_option()
             }
         }
 
@@ -567,4 +598,15 @@ const _: () = {
             }
         }
     }
+};
+
+// Growable containers (Vec, String), 3 pointer size with niche optimization
+#[cfg(feature = "alloc")]
+const _: () = {
+    impl_option_ffi! { RustOptionVec<T>, Vec<T>, usize, Vec<()> }
+};
+
+#[cfg(feature = "alloc")]
+const _: () = {
+    impl_option_ffi! { RustOptionString<String>, usize, String }
 };
