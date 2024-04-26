@@ -18,7 +18,7 @@
 //!
 //! <br>
 //!
-//! *Compiler support: requires rustc 1.60+ and c++11 or newer*<br>
+//! *Compiler support: requires rustc 1.63+ and c++11 or newer*<br>
 //! *[Release notes](https://github.com/dtolnay/cxx/releases)*
 //!
 //! <br>
@@ -251,7 +251,7 @@
 //! fn main() {
 //!     cxx_build::bridge("src/main.rs")  // returns a cc::Build
 //!         .file("src/demo.cc")
-//!         .flag_if_supported("-std=c++11")
+//!         .std("c++11")
 //!         .compile("cxxbridge-demo");
 //!
 //!     println!("cargo:rerun-if-changed=src/main.rs");
@@ -364,7 +364,7 @@
 //! </table>
 
 #![no_std]
-#![doc(html_root_url = "https://docs.rs/cxx/1.0.119")]
+#![doc(html_root_url = "https://docs.rs/cxx/1.0.121")]
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 #![deny(
     improper_ctypes,
@@ -383,6 +383,7 @@
     clippy::cognitive_complexity,
     clippy::declare_interior_mutable_const,
     clippy::doc_markdown,
+    clippy::duplicated_attributes, // clippy bug: https://github.com/rust-lang/rust-clippy/issues/12537
     clippy::empty_enum,
     clippy::extra_unused_type_parameters,
     clippy::inherent_to_string,

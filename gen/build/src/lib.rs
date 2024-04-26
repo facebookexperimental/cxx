@@ -16,7 +16,7 @@
 //! fn main() {
 //!     cxx_build::bridge("src/main.rs")
 //!         .file("src/demo.cc")
-//!         .flag_if_supported("-std=c++11")
+//!         .std("c++11")
 //!         .compile("cxxbridge-demo");
 //!
 //!     println!("cargo:rerun-if-changed=src/main.rs");
@@ -45,7 +45,7 @@
 //! $ cxxbridge src/main.rs > path/to/mybridge.cc
 //! ```
 
-#![doc(html_root_url = "https://docs.rs/cxx-build/1.0.119")]
+#![doc(html_root_url = "https://docs.rs/cxx-build/1.0.121")]
 #![allow(
     clippy::cast_sign_loss,
     clippy::default_trait_access,
@@ -129,7 +129,7 @@ pub fn bridge(rust_source_file: impl AsRef<Path>) -> Build {
 /// let source_files = vec!["src/main.rs", "src/path/to/other.rs"];
 /// cxx_build::bridges(source_files)
 ///     .file("src/demo.cc")
-///     .flag_if_supported("-std=c++11")
+///     .std("c++11")
 ///     .compile("cxxbridge-demo");
 /// ```
 #[must_use]

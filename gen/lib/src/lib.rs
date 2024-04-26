@@ -7,7 +7,7 @@
 //! [dtolnay/cxx#235]: https://github.com/dtolnay/cxx/issues/235
 //! [https://github.com/google/autocxx]: https://github.com/google/autocxx
 
-#![doc(html_root_url = "https://docs.rs/cxx-gen/0.7.119")]
+#![doc(html_root_url = "https://docs.rs/cxx-gen/0.7.121")]
 #![deny(missing_docs)]
 #![allow(dead_code)]
 #![allow(
@@ -47,7 +47,7 @@ mod syntax;
 
 pub use crate::error::Error;
 pub use crate::gen::include::{Include, HEADER};
-pub use crate::gen::{GeneratedCode, Opt};
+pub use crate::gen::{CfgEvaluator, CfgResult, GeneratedCode, Opt};
 pub use crate::syntax::IncludeKind;
 use proc_macro2::TokenStream;
 
