@@ -51,6 +51,10 @@ pub(super) fn write(out: &mut OutFile) {
     let builtin = &mut out.builtin;
     let out = &mut builtin.content;
 
+    if builtin.rust_option {
+        builtin.rust_box = true;
+    }
+
     if builtin.rust_string {
         include.array = true;
         include.cstdint = true;
@@ -185,6 +189,7 @@ pub(super) fn write(out: &mut OutFile) {
         ifndef::write(out, builtin.rust_box, "CXXBRIDGE1_RUST_BOX");
         ifndef::write(out, builtin.unsafe_bitcopy_t, "CXXBRIDGE1_RUST_BITCOPY_T");
         ifndef::write(out, builtin.unsafe_bitcopy, "CXXBRIDGE1_RUST_BITCOPY");
+        ifndef::write(out, builtin.rust_option, "CXXBRIDGE1_RUST_OPTION");
         ifndef::write(out, builtin.rust_vec, "CXXBRIDGE1_RUST_VEC");
         ifndef::write(out, builtin.rust_fn, "CXXBRIDGE1_RUST_FN");
         ifndef::write(out, builtin.rust_error, "CXXBRIDGE1_RUST_ERROR");
