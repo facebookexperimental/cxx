@@ -184,6 +184,7 @@ impl<'a> Types<'a> {
                 | ImplKey::CxxVector(ident) => {
                     Atom::from(ident.rust).is_none() && !aliases.contains_key(ident.rust)
                 }
+                ImplKey::RustOption(_) => true,
             };
             if implicit_impl && !impls.contains_key(&impl_key) {
                 impls.insert(impl_key, None);
@@ -243,7 +244,7 @@ impl<'a> Types<'a> {
 
     pub(crate) fn needs_indirect_abi(&self, ty: &Type) -> bool {
         match ty {
-            Type::RustBox(_) | Type::UniquePtr(_) => false,
+            Type::RustBox(_) | Type::UniquePtr(_) | Type::RustOption(_) => false,
             Type::Array(_) => true,
             _ => !self.is_guaranteed_pod(ty),
         }

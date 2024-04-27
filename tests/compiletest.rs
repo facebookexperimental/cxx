@@ -4,6 +4,6 @@
 #[cfg_attr(miri, ignore)]
 #[test]
 fn ui() {
-    let t = trybuild::TestCases::new();
-    t.compile_fail("tests/ui/*.rs");
+    let check = trybuild::TestCases::new();
+    check.compile_fail("tests/ui/*.rs");
 }

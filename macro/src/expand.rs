@@ -2,7 +2,7 @@ use crate::syntax::atom::Atom::*;
 use crate::syntax::attrs::{self, OtherAttrs};
 use crate::syntax::cfg::CfgExpr;
 use crate::syntax::file::Module;
-use crate::syntax::instantiate::{ImplKey, NamedImplKey};
+use crate::syntax::instantiate::{ImplKey, NamedImplKey, OptionInner};
 use crate::syntax::qualified::QualifiedName;
 use crate::syntax::report::Errors;
 use crate::syntax::symbol::Symbol;
@@ -98,6 +98,9 @@ fn expand(ffi: Module, doc: Doc, attrs: OtherAttrs, apis: &[Api], types: &Types)
             }
             ImplKey::RustVec(ident) => {
                 hidden.extend(expand_rust_vec(ident, types, explicit_impl));
+            }
+            ImplKey::RustOption(ident) => {
+                hidden.extend(expand_rust_option(ident, types, explicit_impl));
             }
             ImplKey::UniquePtr(ident) => {
                 expanded.extend(expand_unique_ptr(ident, types, explicit_impl));
@@ -547,6 +550,48 @@ fn expand_cxx_function_shim(efn: &ExternFn, types: &Types) -> TokenStream {
                 }
             }
             Type::RustVec(_) => quote_spanned!(span=> #var.as_mut_ptr() as *const ::cxx::private::RustVec<_>),
+            Type::RustOption(ty) => {
+                let improper;
+                let call = match &ty.inner {
+                    Type::RustBox(ty) => {
+                        improper = types.is_considered_improper_ctype(&ty.inner);
+                        quote_spanned!(span=> ::cxx::private::RustOption::from(#var))
+                    }
+                    Type::Ref(ty) => match &ty.inner {
+                        Type::Ident(ident) if ident.rust == RustString => {
+                            improper = false;
+                            match ty.mutable {
+                                false => quote_spanned!(span=> ::cxx::private::RustOption::from_option_string_ref(#var)),
+                                true => quote_spanned!(span=> ::cxx::private::RustOption::from_option_string_mut(#var)),
+                            }
+                        },
+                        Type::RustVec(vec) if vec.inner == RustString => {
+                            improper = false;
+                            match ty.mutable {
+                                false => quote_spanned!(span=> ::cxx::private::RustOption::from_option_vec_string_ref(#var)),
+                                true => quote_spanned!(span=> ::cxx::private::RustOption::from_option_vec_string_mut(#var)),
+                            }
+                        },
+                        Type::RustVec(_) => {
+                            improper = false;
+                            match ty.mutable {
+                                false => quote_spanned!(span=> ::cxx::private::RustOption::from_option_vec_ref(#var)),
+                                true => quote_spanned!(span=> ::cxx::private::RustOption::from_option_vec_mut(#var)),
+                            }
+                        },
+                        _ => {
+                            improper = types.is_considered_improper_ctype(&ty.inner);
+                            quote!(::cxx::private::RustOption::from(#var))
+                        }
+                    },
+                    _ => unreachable!(),
+                };
+                if improper {
+                    quote_spanned!(span=> #call.into_raw_improper())
+                } else {
+                    quote_spanned!(span=> #call.into_raw())
+                }
+            }
             Type::Ref(ty) => match &ty.inner {
                 Type::Ident(ident) if ident.rust == RustString => match ty.mutable {
                     false => quote_spanned!(span=> ::cxx::private::RustString::from_ref(#var)),
@@ -672,6 +717,43 @@ fn expand_cxx_function_shim(efn: &ExternFn, types: &Types) -> TokenStream {
                         quote_spanned!(span=> ::cxx::UniquePtr::from_raw(#call.cast()))
                     } else {
                         quote_spanned!(span=> ::cxx::UniquePtr::from_raw(#call))
+                    }
+                }
+                Type::RustOption(ty) => {
+                    let inner = &ty.inner;
+                    match &ty.inner {
+                        Type::Ref(r) => match &r.inner {
+                            Type::Ident(ident) if ident.rust == RustString => match r.mutable {
+                                false => {
+                                    quote_spanned!(span=> ::cxx::private::RustOption::<&_>::from_raw(#call).into_option_string_ref())
+                                }
+                                true => {
+                                    quote_spanned!(span=> ::cxx::private::RustOption::<&mut _>::from_raw(#call).into_option_string_mut())
+                                }
+                            },
+                            Type::RustVec(vec) if vec.inner == RustString => match r.mutable {
+                                false => {
+                                    quote_spanned!(span=> ::cxx::private::RustOption::<&_>::from_raw(#call).into_option_vec_string_ref())
+                                }
+                                true => {
+                                    quote_spanned!(span=> ::cxx::private::RustOption::<&mut _>::from_raw(#call).into_option_vec_string_mut())
+                                }
+                            },
+                            Type::RustVec(_) => match r.mutable {
+                                false => {
+                                    quote_spanned!(span=> ::cxx::private::RustOption::<&_>::from_raw(#call).into_option_vec_ref())
+                                }
+                                true => {
+                                    quote_spanned!(span=> ::cxx::private::RustOption::<&mut _>::from_raw(#call).into_option_vec_mut())
+                                }
+                            },
+                            _ => {
+                                quote_spanned!(span=> ::cxx::private::RustOption::<#inner>::from_raw(#call).into_option())
+                            }
+                        },
+                        _ => {
+                            quote_spanned!(span=> ::cxx::private::RustOption::<#inner>::from_raw(#call).into_option())
+                        }
                     }
                 }
                 Type::Ref(ty) => match &ty.inner {
@@ -1006,6 +1088,30 @@ fn expand_rust_function_shim_impl(
                     quote_spanned!(span=> ::cxx::core::mem::take((*#var).as_mut_vec()))
                 }
             }
+            Type::RustOption(ty) => {
+                requires_unsafe = true;
+                let inner = &ty.inner;
+                match &ty.inner {
+                    Type::Ref(r) => match &r.inner {
+                        Type::Ident(i) if i.rust == RustString => match r.mutable {
+                            true => quote_spanned!(span=> ::cxx::private::RustOption::<&mut _>::from_raw(#var).into_option_string_mut()),
+                            false => quote_spanned!(span=> ::cxx::private::RustOption::<&_>::from_raw(#var).into_option_string_ref()),
+                        },
+                        Type::RustVec(vec) if vec.inner == RustString => match r.mutable {
+                            true => quote_spanned!(span=> ::cxx::private::RustOption::<&mut _>::from_raw(#var).into_option_vec_string_mut()),
+                            false => quote_spanned!(span=> ::cxx::private::RustOption::<&_>::from_raw(#var).into_option_vec_string_ref()),
+                        },
+                        Type::RustVec(_) => {
+                            match r.mutable {
+                                true => quote_spanned!(span=> ::cxx::private::RustOption::<&mut _>::from_raw(#var).into_option_vec_mut()),
+                                false => quote_spanned!(span=> ::cxx::private::RustOption::<&_>::from_raw(#var).into_option_vec_ref()),
+                            }
+                        },
+                        _ => quote_spanned!(span=> ::cxx::private::RustOption::<#inner>::from_raw(#var).into_option()),
+                    }
+                    _ => quote_spanned!(span=> ::cxx::private::RustOption::<#inner>::from_raw(#var).into_option()),
+                }
+            }
             Type::UniquePtr(_) => {
                 requires_unsafe = true;
                 quote_spanned!(span=> ::cxx::UniquePtr::from_raw(#var))
@@ -1064,6 +1170,7 @@ fn expand_rust_function_shim_impl(
     call.extend(quote! { (#(#vars),*) });
 
     let span = body_span;
+    let mut process_converted = None;
     let conversion = sig.ret.as_ref().and_then(|ret| match ret {
         Type::Ident(ident) if ident.rust == RustString => {
             Some(quote_spanned!(span=> ::cxx::private::RustString::from))
@@ -1076,6 +1183,33 @@ fn expand_rust_function_shim_impl(
                 Some(quote_spanned!(span=> ::cxx::private::RustVec::from))
             }
         }
+        Type::RustOption(ty) => {
+            process_converted = Some(quote_spanned!(span=> into_raw));
+            match &ty.inner {
+                Type::RustBox(_) => {
+                    Some(quote_spanned!(span=> ::cxx::private::RustOption::from))
+                }
+                Type::Ref(r) => {
+                    match &r.inner {
+                        Type::Ident(ident) if ident.rust == RustString => match r.mutable {
+                            false => return Some(quote_spanned!(span=> ::cxx::private::RustOption::from_option_string_ref)),
+                            true => return Some(quote_spanned!(span=> ::cxx::private::RustOption::from_option_string_mut)),
+                        },
+                        Type::RustVec(vec) if vec.inner == RustString => match r.mutable {
+                            false => return Some(quote_spanned!(span=> ::cxx::private::RustOption::from_option_vec_string_ref)),
+                            true => return Some(quote_spanned!(span=> ::cxx::private::RustOption::from_option_vec_string_mut)),
+                        },
+                        Type::RustVec(_) => match r.mutable {
+                            false => return Some(quote_spanned!(span=> ::cxx::private::RustOption::from_option_vec_ref)),
+                            true => return Some(quote_spanned!(span=> ::cxx::private::RustOption::from_option_vec_mut)),
+                        },
+                        _ => {},
+                    }
+                    Some(quote_spanned!(span=> ::cxx::private::RustOption::from))
+                }
+                _ => unreachable!(),
+            }
+        },
         Type::UniquePtr(_) => Some(quote_spanned!(span=> ::cxx::UniquePtr::into_raw)),
         Type::Ref(ty) => match &ty.inner {
             Type::Ident(ident) if ident.rust == RustString => match ty.mutable {
@@ -1104,11 +1238,19 @@ fn expand_rust_function_shim_impl(
         None => call,
         Some(conversion) if !sig.throws => {
             requires_closure = true;
-            quote_spanned!(span=> #conversion(#call))
+            if let Some(process_converted) = process_converted {
+                quote_spanned!(span=> #conversion(#call).#process_converted())
+            } else {
+                quote_spanned!(span=> #conversion(#call))
+            }
         }
         Some(conversion) => {
             requires_closure = true;
-            quote_spanned!(span=> ::cxx::core::result::Result::map(#call, #conversion))
+            if let Some(process_converted) = process_converted {
+                quote_spanned!(span=> ::cxx::core::result::Result::map(#call, |v| #conversion(v).#process_converted()))
+            } else {
+                quote_spanned!(span=> ::cxx::core::result::Result::map(#call, #conversion))
+            }
         }
     };
 
@@ -1416,6 +1558,216 @@ fn expand_rust_vec(key: NamedImplKey, types: &Types, explicit_impl: Option<&Impl
                 || unsafe { (*this).truncate(len) },
             );
         }
+    }
+}
+
+fn expand_rust_option(
+    inner: OptionInner,
+    types: &Types,
+    explicit_impl: Option<&Impl>,
+) -> TokenStream {
+    let (elem, key, resolve, link_prefix, local_prefix) = match &inner {
+        OptionInner::RustBox(key) => {
+            let elem = key.rust;
+            let resolve = types.resolve(elem);
+            let link_prefix = format!("cxxbridge1$rust_option$Box${}$", resolve.name.to_symbol());
+            let local_prefix = format_ident!("{}__box__option_", elem);
+            (elem, key, resolve, link_prefix, local_prefix)
+        }
+        OptionInner::Ref(key) => {
+            let elem = key.rust;
+            if types.try_resolve(key.rust).is_none() {
+                return TokenStream::new();
+            }
+            let resolve = types.resolve(elem);
+            let link_prefix = format!("cxxbridge1$rust_option$const${}$", resolve.name.to_symbol());
+            let local_prefix = format_ident!("{}__const__ref__option_", elem);
+            (elem, key, resolve, link_prefix, local_prefix)
+        }
+        OptionInner::MutRef(key) => {
+            let elem = key.rust;
+            if types.try_resolve(key.rust).is_none() {
+                return TokenStream::new();
+            }
+            let resolve = types.resolve(elem);
+            let link_prefix = format!("cxxbridge1$rust_option${}$", resolve.name.to_symbol());
+            let local_prefix = format_ident!("{}__ref__option_", elem);
+            (elem, key, resolve, link_prefix, local_prefix)
+        }
+        OptionInner::RefVec(key) => {
+            let elem = key.rust;
+            if types.try_resolve(key.rust).is_none() {
+                return TokenStream::new();
+            }
+            let resolve = types.resolve(elem);
+            let link_prefix = format!(
+                "cxxbridge1$rust_option$const$Vec${}$",
+                resolve.name.to_symbol()
+            );
+            let local_prefix = format_ident!("{}__vec__const__ref__option_", elem);
+            (elem, key, resolve, link_prefix, local_prefix)
+        }
+        OptionInner::MutRefVec(key) => {
+            let elem = key.rust;
+            if types.try_resolve(key.rust).is_none() {
+                return TokenStream::new();
+            }
+            let resolve = types.resolve(elem);
+            let link_prefix = format!("cxxbridge1$rust_option$Vec${}$", resolve.name.to_symbol());
+            let local_prefix = format_ident!("{}__vec__ref__option_", elem);
+            (elem, key, resolve, link_prefix, local_prefix)
+        }
+    };
+    let link_new = format!("{}new", link_prefix);
+    let link_drop = format!("{}drop", link_prefix);
+    let link_has_value = format!("{}has_value", link_prefix);
+    let link_value_const = format!("{}value_const", link_prefix);
+    let link_value = format!("{}value", link_prefix);
+    let link_set = format!("{}set", link_prefix);
+
+    let local_new = format_ident!("{}new", local_prefix);
+    let local_drop = format_ident!("{}drop", local_prefix);
+    let local_has_value = format_ident!("{}has_value", local_prefix);
+    let local_value_const = format_ident!("{}value_const", local_prefix);
+    let local_value = format_ident!("{}value", local_prefix);
+    let local_set = format_ident!("{}set", local_prefix);
+
+    let begin_span = explicit_impl.map_or(key.begin_span, |explicit| explicit.impl_token.span);
+    let end_span = explicit_impl.map_or(key.end_span, |explicit| explicit.brace_token.span.join());
+    let unsafe_token = format_ident!("unsafe", span = begin_span);
+
+    let ident = key.rust;
+    let (impl_generics, ty_generics) = generics::split_for_impl(*key, explicit_impl, resolve);
+    let (ty, trait_impl_ty, ty_ptr, const_ty_ptr, prevent_unwind_drop_label) = match inner {
+        OptionInner::RustBox(_) => (
+            quote! { ::cxx::alloc::boxed::Box<#elem #ty_generics> },
+            quote! { ::cxx::alloc::boxed::Box<#elem #ty_generics> },
+            quote! { *mut #elem #ty_generics },
+            quote! { *const #elem #ty_generics },
+            format!("::alloc::boxed::Box<::{}> as Drop>::drop", ident),
+        ),
+        OptionInner::Ref(_) => (
+            quote! { &#elem #ty_generics },
+            quote! { &#elem #ty_generics },
+            quote! { *const #elem #ty_generics },
+            quote! { *const #elem #ty_generics },
+            format!("&::{}> as Drop>::drop", ident),
+        ),
+        OptionInner::MutRef(_) => (
+            quote! { &mut #elem #ty_generics },
+            quote! { &mut #elem #ty_generics },
+            quote! { *mut #elem #ty_generics },
+            quote! { *const #elem #ty_generics },
+            format!("&mut ::{}> as Drop>::drop", ident),
+        ),
+        OptionInner::RefVec(_) => (
+            // We cannot `impl ImplOption for Vec<...>` because of orphan rules so instead we
+            // make `ImplOption<T>` and pass the `Vec` in there. Since ImplOption is just a
+            // marker trait that validates that this is a local type, we really could have picked
+            // any unique type for T here - it just needs to be different than the T picked
+            // for a direct (mut) ref above (e.g. it could have been a const bool generic)
+            // but using the actual `Vec` here at least gives some idea of what's going on
+            // if this shows up in an error message.
+            quote! { &::cxx::private::RustVec<#elem #ty_generics> },
+            quote! { &#elem #ty_generics },
+            quote! { *const ::cxx::private::RustVec<#elem #ty_generics> },
+            quote! { *const ::cxx::private::RustVec<#elem #ty_generics> },
+            format!("&::alloc::vec::Vec<::{}> as Drop>::drop", ident),
+        ),
+        OptionInner::MutRefVec(_) => (
+            quote! { &mut ::cxx::private::RustVec<#elem #ty_generics> },
+            quote! { &mut #elem #ty_generics },
+            quote! { *mut ::cxx::private::RustVec<#elem #ty_generics> },
+            quote! { *const ::cxx::private::RustVec<#elem #ty_generics> },
+            format!("&mut ::alloc::vec::Vec<::{}> as Drop>::drop", ident),
+        ),
+    };
+    let set_value_impl = match inner {
+        OptionInner::RustBox(_) => quote! {
+            #[doc(hidden)]
+            #[export_name = #link_set]
+            unsafe extern "C" fn #local_set #impl_generics(this: *mut ::cxx::private::RustOption<#ty>, value: *mut ::core::mem::MaybeUninit<#ty>) {
+                let value = core::mem::replace(value.as_mut().unwrap(), ::core::mem::MaybeUninit::zeroed());
+                this.as_mut().unwrap().set(unsafe { value.assume_init() });
+            }
+            #[doc(hidden)]
+            #[export_name = #link_value_const]
+            unsafe extern "C" fn #local_value_const #impl_generics(this: *const ::cxx::private::RustOption<#ty>) -> *const #ty {
+                let this = unsafe { this.as_ref().unwrap() };
+                ::cxx::core::debug_assert!(this.has_value());
+                let v: &#ty = unsafe { this.as_option().as_ref().unwrap() };
+                v as _
+            }
+            #[doc(hidden)]
+            #[export_name = #link_value]
+            unsafe extern "C" fn #local_value #impl_generics(this: *mut ::cxx::private::RustOption<#ty>) -> *mut #ty {
+                let this: &mut ::cxx::private::RustOption<#ty> = unsafe { this.as_mut().unwrap() };
+                ::cxx::core::debug_assert!(this.has_value());
+                this.as_mut_option().as_mut().unwrap() as _
+            }
+        },
+        OptionInner::Ref(_) | OptionInner::RefVec(_) => quote! {
+            // no value_const, value already is value_const
+            #[doc(hidden)]
+            #[export_name = #link_set]
+            unsafe extern "C" fn #local_set #impl_generics(this: *mut ::cxx::private::RustOption<#ty>, value: #ty_ptr) {
+                unsafe { this.as_mut().unwrap().set(&*value) };
+            }
+            #[doc(hidden)]
+            #[export_name = #link_value]
+            unsafe extern "C" fn #local_value #impl_generics(this: *const ::cxx::private::RustOption<#ty>) -> #ty_ptr {
+                let this: &::cxx::private::RustOption<#ty> = unsafe { this.as_ref().unwrap() };
+                ::cxx::core::debug_assert!(this.has_value());
+                let option: &::core::option::Option<#ty> = this.as_option();
+                let option: ::core::option::Option<&#ty> = option.as_ref();
+                option.copied().unwrap() as _
+            }
+        },
+        OptionInner::MutRef(_) | OptionInner::MutRefVec(_) => quote! {
+            #[doc(hidden)]
+            #[export_name = #link_set]
+            unsafe extern "C" fn #local_set #impl_generics(this: *mut ::cxx::private::RustOption<#ty>, value: #ty_ptr) {
+                unsafe { this.as_mut().unwrap().set(&mut *value) };
+            }
+            #[doc(hidden)]
+            #[export_name = #link_value_const]
+            unsafe extern "C" fn #local_value_const #impl_generics(this: *const ::cxx::private::RustOption<#ty>) -> #const_ty_ptr {
+                let this = unsafe { this.as_ref().unwrap() };
+                ::cxx::core::debug_assert!(this.has_value());
+                let v: &#ty = unsafe { this.as_option().as_ref().unwrap() };
+                &**v as _
+            }
+            #[doc(hidden)]
+            #[export_name = #link_value]
+            unsafe extern "C" fn #local_value #impl_generics(this: *mut ::cxx::private::RustOption<#ty>) -> #ty_ptr {
+                let this: &mut ::cxx::private::RustOption<#ty> = unsafe { this.as_mut().unwrap() };
+                ::cxx::core::debug_assert!(this.has_value());
+                let option: &mut ::core::option::Option<#ty> = this.as_mut_option();
+                let option: ::core::option::Option<&mut #ty> = option.as_mut();
+                *option.unwrap() as _
+            }
+        },
+    };
+    quote_spanned! {end_span=>
+        // #[doc(hidden)]
+        #unsafe_token impl #impl_generics ::cxx::private::ImplOption<#ty> for #trait_impl_ty {}
+        #[doc(hidden)]
+        #[export_name = #link_new]
+        unsafe extern "C" fn #local_new #impl_generics(this: *mut ::cxx::private::RustOption<#ty>) {
+            unsafe { ::cxx::core::ptr::write(this, ::cxx::private::RustOption::new()) };
+        }
+        #[doc(hidden)]
+        #[export_name = #link_drop]
+        unsafe extern "C" fn #local_drop #impl_generics(this: *mut ::cxx::private::RustOption<#ty>) {
+            let __fn = concat!("<", module_path!(), #prevent_unwind_drop_label);
+            ::cxx::private::prevent_unwind(__fn, || unsafe { ::cxx::core::ptr::drop_in_place(this) });
+        }
+        #[doc(hidden)]
+        #[export_name = #link_has_value]
+        unsafe extern "C" fn #local_has_value #impl_generics(this: *const ::cxx::private::RustOption<#ty>) -> bool {
+            unsafe { this.as_ref().unwrap().value().is_some() }
+        }
+        #set_value_impl
     }
 }
 
@@ -1856,6 +2208,51 @@ fn expand_extern_type(ty: &Type, types: &Types, proper: bool) -> TokenStream {
             let rangle = ty.rangle;
             quote_spanned!(span=> ::cxx::private::RustVec #langle #elem #rangle)
         }
+        Type::RustOption(ty) => match &ty.inner {
+            Type::Ref(r) => {
+                let ampersand = r.ampersand;
+                let star = Token![*](ampersand.span);
+                match &r.inner {
+                    Type::Ident(ident) if ident.rust == RustString => {
+                        let span = ident.rust.span();
+                        match r.mutable {
+                            false => quote_spanned!(span=> #star const ::cxx::private::RustString),
+                            true => quote_spanned!(span=> #star mut ::cxx::private::RustString),
+                        }
+                    }
+                    Type::RustVec(ty) => {
+                        let span = ty.name.span();
+                        let langle = ty.langle;
+                        let inner = expand_extern_type(&ty.inner, types, proper);
+                        let rangle = ty.rangle;
+                        match r.mutable {
+                            false => {
+                                quote_spanned!(span=> #star const ::cxx::private::RustVec #langle #inner #rangle)
+                            }
+                            true => {
+                                quote_spanned!(span=> #star mut ::cxx::private::RustVec #langle #inner #rangle)
+                            }
+                        }
+                    }
+                    inner if proper && types.is_considered_improper_ctype(inner) => {
+                        let star = Token![*](ampersand.span);
+                        match r.mutable {
+                            false => quote!(#star const ::cxx::core::ffi::c_void),
+                            true => quote!(#star mut ::cxx::core::ffi::c_void),
+                        }
+                    }
+                    inner => {
+                        let star = Token![*](ampersand.span);
+                        match r.mutable {
+                            false => quote!(#star const #inner),
+                            true => quote!(#star mut #inner),
+                        }
+                    }
+                }
+            }
+            Type::RustBox(_) => expand_extern_type(&ty.inner, types, proper),
+            _ => unreachable!(),
+        },
         Type::Ref(ty) => {
             let ampersand = ty.ampersand;
             let lifetime = &ty.lifetime;
