@@ -656,7 +656,7 @@ fn r_return_rust_option_box() -> Option<Box<ffi::Shared>> {
 }
 
 fn r_return_rust_option_box_generic() -> Option<Box<ffi::StructWithLifetime<'static>>> {
-    Some(Box::new(ffi::StructWithLifetime { s: &"abc" }))
+    Some(Box::new(ffi::StructWithLifetime { s: "abc" }))
 }
 
 unsafe fn r_return_rust_option_ref_shared<'a>(shared: &'a ffi::Shared) -> Option<&'a ffi::Shared> {
