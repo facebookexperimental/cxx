@@ -153,6 +153,7 @@ fn expand(ffi: Module, doc: Doc, attrs: OtherAttrs, apis: &[Api], types: &Types)
             clippy::ref_as_ptr,
             clippy::upper_case_acronyms,
             clippy::use_self,
+            clippy::ref_option_ref,
         )]
         #vis #mod_token #ident #expanded
     }
