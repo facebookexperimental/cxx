@@ -8,7 +8,7 @@
     clippy::needless_pass_by_ref_mut,
     clippy::unit_cmp,
     clippy::unseparated_literal_suffix,
-    clippy::too_many_lines,
+    clippy::too_many_lines
 )]
 
 use cxx::SharedPtr;
