@@ -348,8 +348,9 @@ impl<'a> RustOption<&'a mut RustVec<RustString>> {
 
     pub fn as_option_vec_string_mut_mut(&mut self) -> &mut Option<&'a mut Vec<String>> {
         unsafe {
-            (*(self as *mut RustOption<&mut RustVec<RustString>> as *mut RustOption<&mut Vec<alloc::string::String>>))
-            .as_mut_option()
+            (*(self as *mut RustOption<&mut RustVec<RustString>>
+                as *mut RustOption<&mut Vec<alloc::string::String>>))
+                .as_mut_option()
         }
     }
 }
@@ -395,7 +396,7 @@ impl<'a> RustOption<&'a mut RustString> {
     pub fn as_option_string_mut_mut(&mut self) -> &mut Option<&'a mut String> {
         unsafe {
             (*(self as *mut RustOption<&mut RustString> as *mut RustOption<&mut String>))
-            .as_mut_option()
+                .as_mut_option()
         }
     }
 }

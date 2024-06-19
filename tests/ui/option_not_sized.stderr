@@ -28,27 +28,9 @@ error[E0599]: the function or associated item `new` exists for struct `RustOptio
   | pub trait Debug {
   | --------------- doesn't satisfy `dyn Debug: Sized`
   |
-note: if you're trying to build a new `RustOption<&dyn Debug>` consider using one of the following associated functions:
-      RustOption::<T>::new
-      RustOption::<T>::from
-      RustOption::<&'a T>::from_raw
-      RustOption::<&'a T>::from_raw_improper
-   --> src/rust_option.rs
-    |
-    |     pub fn new() -> Self {
-    |     ^^^^^^^^^^^^^^^^^^^^
-...
-    |     pub fn from(o: Option<T>) -> Self {
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-...
-    |     pub unsafe fn from_raw(ptr: *const T) -> Self {
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-...
-    |     pub unsafe fn from_raw_improper(ptr: *const core::ffi::c_void) -> Self {
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    = note: the following trait bounds were not satisfied:
-            `dyn Debug: Sized`
-            which is required by `&dyn Debug: cxx::rust_option::OptionTarget`
+  = note: the following trait bounds were not satisfied:
+          `dyn Debug: Sized`
+          which is required by `&dyn Debug: cxx::rust_option::OptionTarget`
 
 error[E0277]: the size for values of type `(dyn Debug + 'static)` cannot be known at compilation time
  --> tests/ui/option_not_sized.rs:2:57

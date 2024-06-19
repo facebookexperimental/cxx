@@ -1120,7 +1120,7 @@ fn write_rust_function_shim_impl(
             | Type::Str(_)
             | Type::SliceRef(_)
             | Type::RustOption(_),
-        ) = ret & sig.ret
+        ) = &sig.ret
         {
             write!(out, ")");
         }
