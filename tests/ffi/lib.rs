@@ -140,6 +140,10 @@ pub mod ffi {
         fn c_return_rust_mut_option_vec_string(v: &mut Vec<String>) -> Option<&mut Vec<String>>;
         fn c_return_rust_ref_option_string(s: &String) -> Option<&String>;
         fn c_return_rust_mut_option_string(s: &mut String) -> Option<&mut String>;
+        fn c_return_rust_option_vec_native() -> Option<Vec<u8>>;
+        fn c_return_rust_option_vec_shared() -> Option<Vec<Shared>>;
+        fn c_return_rust_option_vec_string() -> Option<Vec<String>>;
+        fn c_return_rust_option_string() -> Option<String>;
         fn c_return_identity(_: usize) -> usize;
         fn c_return_sum(_: usize, _: usize) -> usize;
         fn c_return_enum(n: u16) -> Enum;
@@ -205,6 +209,10 @@ pub mod ffi {
         fn c_take_rust_mut_option_vec_string(rust: Option<&mut Vec<String>>);
         fn c_take_rust_ref_option_string(rust: Option<&String>);
         fn c_take_rust_mut_option_string(rust: Option<&mut String>);
+        fn c_take_rust_option_vec_native(rust: Option<Vec<u8>>);
+        fn c_take_rust_option_vec_shared(rust: Option<Vec<Shared>>);
+        fn c_take_rust_option_vec_string(rust: Option<Vec<String>>);
+        fn c_take_rust_option_string(rust: Option<String>);
 
         fn c_take_ref_shared_string(s: &SharedString) -> &SharedString;
         fn c_take_callback(callback: fn(String) -> usize);
@@ -360,6 +368,10 @@ pub mod ffi {
         unsafe fn r_return_rust_option_pin_mut_native<'a>(
             native: Pin<&'a mut u8>,
         ) -> Option<Pin<&'a mut u8>>;
+        fn r_return_rust_option_vec_native() -> Option<Vec<u8>>;
+        fn r_return_rust_option_vec_shared() -> Option<Vec<Shared>>;
+        fn r_return_rust_option_vec_string() -> Option<Vec<String>>;
+        fn r_return_rust_option_string() -> Option<String>;
         fn r_return_identity(_: usize) -> usize;
         fn r_return_sum(_: usize, _: usize) -> usize;
         fn r_return_enum(n: u32) -> Enum;
@@ -396,6 +408,10 @@ pub mod ffi {
         fn r_take_rust_option_mut_ref_vec(o: Option<&mut Vec<u8>>);
         fn r_take_rust_option_ref_vec_string(o: Option<&Vec<String>>);
         fn r_take_rust_option_mut_ref_vec_string(o: Option<&mut Vec<String>>);
+        fn r_take_rust_option_vec_native(o: Option<Vec<u8>>);
+        fn r_take_rust_option_vec_shared(o: Option<Vec<Shared>>);
+        fn r_take_rust_option_vec_string(o: Option<Vec<String>>);
+        fn r_take_rust_option_string(o: Option<String>);
 
         fn r_take_enum(e: Enum);
 
@@ -716,6 +732,22 @@ unsafe fn r_return_rust_option_pin_mut_native<'a>(
     Some(native)
 }
 
+fn r_return_rust_option_vec_native() -> Option<Vec<u8>> {
+    Some(vec![20, 24])
+}
+
+fn r_return_rust_option_vec_shared() -> Option<Vec<ffi::Shared>> {
+    Some(vec![ffi::Shared { z: 2024 }])
+}
+
+fn r_return_rust_option_vec_string() -> Option<Vec<String>> {
+    Some(vec![String::from("2024")])
+}
+
+fn r_return_rust_option_string() -> Option<String> {
+    Some(String::from("2024"))
+}
+
 fn r_return_identity(n: usize) -> usize {
     n
 }
@@ -866,6 +898,34 @@ fn r_take_rust_option_ref_vec_string(o: Option<&Vec<String>>) {
 
 fn r_take_rust_option_mut_ref_vec_string(o: Option<&mut Vec<String>>) {
     let _ = o;
+}
+
+fn r_take_rust_option_vec_native(o: Option<Vec<u8>>) {
+    match o {
+        Some(v) => assert_eq!(&v, &[20, 24]),
+        None => unreachable!(),
+    }
+}
+
+fn r_take_rust_option_vec_shared(o: Option<Vec<ffi::Shared>>) {
+    match o {
+        Some(v) => assert_eq!(&v, &[ffi::Shared { z: 2024 }]),
+        None => unreachable!(),
+    }
+}
+
+fn r_take_rust_option_vec_string(o: Option<Vec<String>>) {
+    match o {
+        Some(v) => assert_eq!(&v, &["2024".to_string()]),
+        None => unreachable!(),
+    }
+}
+
+fn r_take_rust_option_string(o: Option<String>) {
+    match o {
+        Some(v) => assert_eq!(&v, &"2024"),
+        None => unreachable!(),
+    }
 }
 
 fn r_take_enum(e: ffi::Enum) {
