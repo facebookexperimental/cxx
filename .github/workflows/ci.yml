@@ -17,17 +17,13 @@ jobs:
     name: ${{matrix.name || format('Rust {0}', matrix.rust)}}
     needs: pre_ci
     if: needs.pre_ci.outputs.continue
-    runs-on: ${{matrix.os || 'ubuntu'}}-latest
+    runs-on: ${{matrix.os}}-latest
     strategy:
       fail-fast: false
       matrix:
+        rust: [nightly, beta, stable, 1.67.0, 1.70.0, 1.74.0]
+        os: [ubuntu]
         include:
-          - rust: nightly
-          - rust: beta
-          - rust: stable
-          - rust: 1.60.0
-          - rust: 1.70.0
-          - rust: 1.74.0
           - name: Cargo on macOS
             rust: nightly
             os: macos
@@ -59,22 +55,23 @@ jobs:
           echo RUSTFLAGS=$RUSTFLAGS >> $GITHUB_ENV
           echo exclude=--exclude cxx-test-suite ${{matrix.rust == '1.70.0' && '--exclude cxxbridge-cmd' || ''}} >> $GITHUB_OUTPUT
         env:
-          RUSTFLAGS: ${{env.RUSTFLAGS}} ${{matrix.os && github.event_name != 'schedule' && '--cfg skip_ui_tests' || ''}}
+          RUSTFLAGS: ${{env.RUSTFLAGS}} ${{matrix.os != 'ubuntu' && github.event_name != 'schedule' && '--cfg skip_ui_tests' || ''}}
         id: testsuite
         shell: bash
       - run: cargo run --manifest-path demo/Cargo.toml
       - run: cargo test --workspace ${{steps.testsuite.outputs.exclude}}
-<<<<<<< HEAD
-        if: matrix.rust != '1.63.0' && matrix.rust != '1.64.0'
-=======
-        if: matrix.rust != '1.60.0'
->>>>>>> 9e6e673f (Fix tests to work on respective MSRVs)
+        if: matrix.rust != '1.67.0'
       - run: cargo check --no-default-features --features alloc
         env:
           RUSTFLAGS: --cfg compile_error_if_std ${{env.RUSTFLAGS}}
       - run: cargo check --no-default-features
         env:
           RUSTFLAGS: --cfg compile_error_if_alloc --cfg cxx_experimental_no_alloc ${{env.RUSTFLAGS}}
+      - uses: actions/upload-artifact@v4
+        if: matrix.os == 'ubuntu' && matrix.rust == 'nightly' && always()
+        with:
+          name: Cargo.lock
+          path: Cargo.lock
 
   reindeer:
     name: Reindeer

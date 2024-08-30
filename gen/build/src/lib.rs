@@ -45,7 +45,7 @@
 //! $ cxxbridge src/main.rs > path/to/mybridge.cc
 //! ```
 
-#![doc(html_root_url = "https://docs.rs/cxx-build/1.0.124")]
+#![doc(html_root_url = "https://docs.rs/cxx-build/1.0.126")]
 #![cfg_attr(not(check_cfg), allow(unexpected_cfgs))]
 #![allow(
     clippy::cast_sign_loss,
@@ -434,9 +434,8 @@ fn best_effort_copy_headers(src: &Path, dst: &Path, max_depth: usize) {
     use std::fs;
 
     let mut dst_created = false;
-    let mut entries = match fs::read_dir(src) {
-        Ok(entries) => entries,
-        Err(_) => return,
+    let Ok(mut entries) = fs::read_dir(src) else {
+        return;
     };
 
     while let Some(Ok(entry)) = entries.next() {

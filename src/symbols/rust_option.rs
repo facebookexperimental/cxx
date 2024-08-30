@@ -1,4 +1,4 @@
-use crate::c_char::c_char;
+use core::ffi::c_char;
 use crate::rust_option::RustOption;
 #[cfg(feature = "alloc")]
 use crate::rust_string::RustString;

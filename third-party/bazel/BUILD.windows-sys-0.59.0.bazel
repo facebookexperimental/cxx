@@ -11,10 +11,10 @@ load("@rules_rust//rust:defs.bzl", "rust_library")
 package(default_visibility = ["//visibility:public"])
 
 rust_library(
-    name = "winapi_util",
+    name = "windows_sys",
     srcs = glob(
         include = ["**/*.rs"],
-        allow_empty = False,
+        allow_empty = True,
     ),
     compile_data = glob(
         include = ["**"],
@@ -28,6 +28,16 @@ rust_library(
             "WORKSPACE.bazel",
         ],
     ),
+    crate_features = [
+        "Win32",
+        "Win32_Foundation",
+        "Win32_Storage",
+        "Win32_Storage_FileSystem",
+        "Win32_System",
+        "Win32_System_Console",
+        "Win32_System_SystemInformation",
+        "default",
+    ],
     crate_root = "src/lib.rs",
     edition = "2021",
     rustc_flags = [
@@ -35,7 +45,7 @@ rust_library(
     ],
     tags = [
         "cargo-bazel",
-        "crate-name=winapi-util",
+        "crate-name=windows-sys",
         "manual",
         "noclippy",
         "norustfmt",
@@ -77,17 +87,8 @@ rust_library(
         "@rules_rust//rust/platform:x86_64-unknown-none": [],
         "//conditions:default": ["@platforms//:incompatible"],
     }),
-    version = "0.1.8",
-    deps = select({
-        "@rules_rust//rust/platform:aarch64-pc-windows-msvc": [
-            "@vendor__windows-sys-0.52.0//:windows_sys",  # cfg(windows)
-        ],
-        "@rules_rust//rust/platform:i686-pc-windows-msvc": [
-            "@vendor__windows-sys-0.52.0//:windows_sys",  # cfg(windows)
-        ],
-        "@rules_rust//rust/platform:x86_64-pc-windows-msvc": [
-            "@vendor__windows-sys-0.52.0//:windows_sys",  # cfg(windows)
-        ],
-        "//conditions:default": [],
-    }),
+    version = "0.59.0",
+    deps = [
+        "@vendor__windows-targets-0.52.6//:windows_targets",
+    ],
 )

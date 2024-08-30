@@ -6,16 +6,15 @@
 #     bazel run @@//third-party:vendor
 ###############################################################################
 
-load("@rules_rust//cargo:defs.bzl", "cargo_build_script")
 load("@rules_rust//rust:defs.bzl", "rust_library")
 
 package(default_visibility = ["//visibility:public"])
 
 rust_library(
-    name = "windows_aarch64_msvc",
+    name = "winapi_util",
     srcs = glob(
         include = ["**/*.rs"],
-        allow_empty = False,
+        allow_empty = True,
     ),
     compile_data = glob(
         include = ["**"],
@@ -36,7 +35,7 @@ rust_library(
     ],
     tags = [
         "cargo-bazel",
-        "crate-name=windows_aarch64_msvc",
+        "crate-name=winapi-util",
         "manual",
         "noclippy",
         "norustfmt",
@@ -78,50 +77,17 @@ rust_library(
         "@rules_rust//rust/platform:x86_64-unknown-none": [],
         "//conditions:default": ["@platforms//:incompatible"],
     }),
-    version = "0.52.5",
-    deps = [
-        "@vendor__windows_aarch64_msvc-0.52.5//:build_script_build",
-    ],
-)
-
-cargo_build_script(
-    name = "_bs",
-    srcs = glob(
-        include = ["**/*.rs"],
-        allow_empty = False,
-    ),
-    crate_name = "build_script_build",
-    crate_root = "build.rs",
-    data = glob(
-        include = ["**"],
-        allow_empty = True,
-        exclude = [
-            "**/* *",
-            ".tmp_git_root/**/*",
-            "BUILD",
-            "BUILD.bazel",
-            "WORKSPACE",
-            "WORKSPACE.bazel",
+    version = "0.1.9",
+    deps = select({
+        "@rules_rust//rust/platform:aarch64-pc-windows-msvc": [
+            "@vendor__windows-sys-0.59.0//:windows_sys",  # cfg(windows)
         ],
-    ),
-    edition = "2021",
-    pkg_name = "windows_aarch64_msvc",
-    rustc_flags = [
-        "--cap-lints=allow",
-    ],
-    tags = [
-        "cargo-bazel",
-        "crate-name=windows_aarch64_msvc",
-        "manual",
-        "noclippy",
-        "norustfmt",
-    ],
-    version = "0.52.5",
-    visibility = ["//visibility:private"],
-)
-
-alias(
-    name = "build_script_build",
-    actual = ":_bs",
-    tags = ["manual"],
+        "@rules_rust//rust/platform:i686-pc-windows-msvc": [
+            "@vendor__windows-sys-0.59.0//:windows_sys",  # cfg(windows)
+        ],
+        "@rules_rust//rust/platform:x86_64-pc-windows-msvc": [
+            "@vendor__windows-sys-0.59.0//:windows_sys",  # cfg(windows)
+        ],
+        "//conditions:default": [],
+    }),
 )

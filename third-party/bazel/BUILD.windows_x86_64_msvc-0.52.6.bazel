@@ -12,10 +12,10 @@ load("@rules_rust//rust:defs.bzl", "rust_library")
 package(default_visibility = ["//visibility:public"])
 
 rust_library(
-    name = "windows_x86_64_gnullvm",
+    name = "windows_x86_64_msvc",
     srcs = glob(
         include = ["**/*.rs"],
-        allow_empty = False,
+        allow_empty = True,
     ),
     compile_data = glob(
         include = ["**"],
@@ -36,7 +36,7 @@ rust_library(
     ],
     tags = [
         "cargo-bazel",
-        "crate-name=windows_x86_64_gnullvm",
+        "crate-name=windows_x86_64_msvc",
         "manual",
         "noclippy",
         "norustfmt",
@@ -78,9 +78,9 @@ rust_library(
         "@rules_rust//rust/platform:x86_64-unknown-none": [],
         "//conditions:default": ["@platforms//:incompatible"],
     }),
-    version = "0.52.5",
+    version = "0.52.6",
     deps = [
-        "@vendor__windows_x86_64_gnullvm-0.52.5//:build_script_build",
+        "@vendor__windows_x86_64_msvc-0.52.6//:build_script_build",
     ],
 )
 
@@ -88,7 +88,7 @@ cargo_build_script(
     name = "_bs",
     srcs = glob(
         include = ["**/*.rs"],
-        allow_empty = False,
+        allow_empty = True,
     ),
     crate_name = "build_script_build",
     crate_root = "build.rs",
@@ -105,18 +105,18 @@ cargo_build_script(
         ],
     ),
     edition = "2021",
-    pkg_name = "windows_x86_64_gnullvm",
+    pkg_name = "windows_x86_64_msvc",
     rustc_flags = [
         "--cap-lints=allow",
     ],
     tags = [
         "cargo-bazel",
-        "crate-name=windows_x86_64_gnullvm",
+        "crate-name=windows_x86_64_msvc",
         "manual",
         "noclippy",
         "norustfmt",
     ],
-    version = "0.52.5",
+    version = "0.52.6",
     visibility = ["//visibility:private"],
 )
 
