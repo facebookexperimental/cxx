@@ -1,71 +1,35 @@
-error[E0277]: the size for values of type `(dyn Debug + 'static)` cannot be known at compilation time
+error[E0277]: the trait bound `&'static (dyn Debug + 'static): cxx::rust_option::OptionPtrTarget` is not satisfied
  --> tests/ui/option_not_sized.rs:2:14
   |
-2 |     const _: cxx::RustOption::<&dyn core::fmt::Debug> = cxx::RustOption::<&dyn core::fmt::Debug>::new();
-  |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+2 |     const _: <Option<&dyn core::fmt::Debug> as ::cxx::private::OptionFfi>::Target =
+  |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Sized` is not implemented for `(dyn Debug + 'static)`, which is required by `Option<&'static (dyn Debug + 'static)>: OptionFfi`
   |
-  = help: the trait `Sized` is not implemented for `(dyn Debug + 'static)`, which is required by `&'static (dyn Debug + 'static): cxx::rust_option::OptionTarget`
-  = help: the following other types implement trait `cxx::rust_option::OptionTarget`:
-            &T
-            &mut T
-            Box<T>
-            Pin<&mut T>
-  = note: required for `&'static (dyn Debug + 'static)` to implement `cxx::rust_option::OptionTarget`
-note: required by a bound in `RustOption`
- --> src/rust_option.rs
-  |
-  | pub struct RustOption<T: OptionTarget> {
-  |                          ^^^^^^^^^^^^ required by this bound in `RustOption`
+  = help: the trait `OptionFfi` is implemented for `Option<T>`
+  = note: required for `&'static (dyn Debug + 'static)` to implement `cxx::rust_option::OptionPtrTarget`
+  = note: required for `Option<&'static (dyn Debug + 'static)>` to implement `OptionFfi`
 
-error[E0599]: the function or associated item `new` exists for struct `RustOption<&dyn Debug>`, but its trait bounds were not satisfied
- --> tests/ui/option_not_sized.rs:2:99
+error[E0599]: no function or associated item named `new` found for struct `cxx::rust_option::_::RustOption` in the current scope
+ --> tests/ui/option_not_sized.rs:3:79
   |
-2 |     const _: cxx::RustOption::<&dyn core::fmt::Debug> = cxx::RustOption::<&dyn core::fmt::Debug>::new();
-  |                                                                                                   ^^^ function or associated item cannot be called on `RustOption<&dyn Debug>` due to unsatisfied trait bounds
-  |
- ::: $RUST/core/src/fmt/mod.rs
-  |
-  | pub trait Debug {
-  | --------------- doesn't satisfy `dyn Debug: Sized`
-  |
-  = note: the following trait bounds were not satisfied:
-          `dyn Debug: Sized`
-          which is required by `&dyn Debug: cxx::rust_option::OptionTarget`
+3 |         <Option<&dyn core::fmt::Debug> as ::cxx::private::OptionFfi>::Target::new();
+  |                                                                               ^^^ function or associated item not found in `RustOption<&dyn Debug>`
 
-error[E0277]: the size for values of type `(dyn Debug + 'static)` cannot be known at compilation time
- --> tests/ui/option_not_sized.rs:2:57
+error[E0277]: the trait bound `&'static (dyn Debug + 'static): cxx::rust_option::OptionPtrTarget` is not satisfied
+ --> tests/ui/option_not_sized.rs:3:9
   |
-2 |     const _: cxx::RustOption::<&dyn core::fmt::Debug> = cxx::RustOption::<&dyn core::fmt::Debug>::new();
-  |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+3 |         <Option<&dyn core::fmt::Debug> as ::cxx::private::OptionFfi>::Target::new();
+  |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Sized` is not implemented for `(dyn Debug + 'static)`, which is required by `Option<&'static (dyn Debug + 'static)>: OptionFfi`
   |
-  = help: the trait `Sized` is not implemented for `(dyn Debug + 'static)`, which is required by `&'static (dyn Debug + 'static): cxx::rust_option::OptionTarget`
-  = help: the following other types implement trait `cxx::rust_option::OptionTarget`:
-            &T
-            &mut T
-            Box<T>
-            Pin<&mut T>
-  = note: required for `&'static (dyn Debug + 'static)` to implement `cxx::rust_option::OptionTarget`
-note: required by a bound in `RustOption`
- --> src/rust_option.rs
-  |
-  | pub struct RustOption<T: OptionTarget> {
-  |                          ^^^^^^^^^^^^ required by this bound in `RustOption`
+  = help: the trait `OptionFfi` is implemented for `Option<T>`
+  = note: required for `&'static (dyn Debug + 'static)` to implement `cxx::rust_option::OptionPtrTarget`
+  = note: required for `Option<&'static (dyn Debug + 'static)>` to implement `OptionFfi`
 
-error[E0277]: the size for values of type `dyn Debug` cannot be known at compilation time
- --> tests/ui/option_not_sized.rs:2:57
+error[E0277]: the trait bound `&dyn Debug: cxx::rust_option::OptionPtrTarget` is not satisfied
+ --> tests/ui/option_not_sized.rs:3:9
   |
-2 |     const _: cxx::RustOption::<&dyn core::fmt::Debug> = cxx::RustOption::<&dyn core::fmt::Debug>::new();
-  |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+3 |         <Option<&dyn core::fmt::Debug> as ::cxx::private::OptionFfi>::Target::new();
+  |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Sized` is not implemented for `dyn Debug`, which is required by `Option<&dyn Debug>: OptionFfi`
   |
-  = help: the trait `Sized` is not implemented for `dyn Debug`, which is required by `&dyn Debug: cxx::rust_option::OptionTarget`
-  = help: the following other types implement trait `cxx::rust_option::OptionTarget`:
-            &T
-            &mut T
-            Box<T>
-            Pin<&mut T>
-  = note: required for `&dyn Debug` to implement `cxx::rust_option::OptionTarget`
-note: required by a bound in `RustOption`
- --> src/rust_option.rs
-  |
-  | pub struct RustOption<T: OptionTarget> {
-  |                          ^^^^^^^^^^^^ required by this bound in `RustOption`
+  = help: the trait `OptionFfi` is implemented for `Option<T>`
+  = note: required for `&dyn Debug` to implement `cxx::rust_option::OptionPtrTarget`
+  = note: required for `Option<&dyn Debug>` to implement `OptionFfi`

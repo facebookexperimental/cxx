@@ -1,5 +1,6 @@
 fn foo() {
-    const _: cxx::RustOption::<&dyn core::fmt::Debug> = cxx::RustOption::<&dyn core::fmt::Debug>::new();
+    const _: <Option<&dyn core::fmt::Debug> as ::cxx::private::OptionFfi>::Target =
+        <Option<&dyn core::fmt::Debug> as ::cxx::private::OptionFfi>::Target::new();
 }
 
 fn main() {}
