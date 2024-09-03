@@ -300,94 +300,6 @@ private:
 };
 #endif // CXXBRIDGE1_RUST_BOX
 
-#ifndef CXXBRIDGE1_RUST_OPTION
-template <typename T>
-class Option final {};
-
-template <typename T>
-class Option<T&> {
-public:
-  Option() noexcept;
-  Option(Option&&) noexcept;
-  Option(T&) noexcept;
-  ~Option() noexcept;
-
-  Option<T&>& operator=(Option&&) noexcept;
-  const T& operator*() const noexcept;
-  const T* operator->() const noexcept;
-  T& operator*() noexcept;
-  T* operator->() noexcept;
-
-  bool has_value() const noexcept;
-  const T& value() const noexcept;
-  T& value() noexcept;
-  void reset();
-  void set(T&) noexcept;
-  static Option<T&> from_raw(T*) noexcept;
-  T* into_raw() noexcept;
-private:
-  void* repr;
-
-  void drop() noexcept;
-};
-
-template <typename T>
-class Option<const T&> {
-public:
-  Option() noexcept;
-  Option(const Option&) noexcept;
-  Option(Option&&) noexcept;
-  Option(const T&) noexcept;
-  ~Option() noexcept;
-
-  Option<const T&>& operator=(const Option&) noexcept;
-  Option<const T&>& operator=(Option&&) noexcept;
-  const T& operator*() const noexcept;
-  const T* operator->() const noexcept;
-
-  bool has_value() const noexcept;
-  const T& value() const noexcept;
-  void reset();
-  void set(const T&) noexcept;
-  static Option<const T&> from_raw(const T*) noexcept;
-  const T* into_raw() const noexcept;
-private:
-  void* repr;
-
-  void drop() noexcept;
-};
-
-template <typename T>
-class Option<Box<T>> {
-public:
-  Option() noexcept;
-  Option(Option&&) noexcept;
-  Option(Box<T>&&) noexcept;
-  ~Option() noexcept;
-
-  Option<Box<T>>& operator=(Option&&) noexcept;
-  const Box<T>& operator*() const noexcept;
-  const Box<T>* operator->() const noexcept;
-  Box<T>& operator*() noexcept;
-  Box<T>* operator->() noexcept;
-
-  bool has_value() const noexcept;
-  const Box<T>& value() const noexcept;
-  Box<T>& value() noexcept;
-  void reset();
-  void set(Box<T>) noexcept;
-
-  // Important: requires that `raw` came from an into_raw call. Do not pass a
-  // pointer from `new` or any other source.
-  static Option<Box<T>> from_raw(T*) noexcept;
-  T* into_raw() noexcept;
-private:
-  void* repr;
-
-  void drop() noexcept;
-};
-#endif // CXXBRIDGE1_RUST_OPTION
-
 #ifndef CXXBRIDGE1_RUST_VEC
 // https://cxx.rs/binding/vec.html
 template <typename T>
@@ -471,6 +383,164 @@ private:
   void *fn;
 };
 #endif // CXXBRIDGE1_RUST_FN
+
+#ifndef CXXBRIDGE1_RUST_OPTION
+template <typename T>
+class Option final {};
+
+template <typename T>
+class Option<T&> {
+public:
+  Option() noexcept;
+  Option(Option&&) noexcept;
+  Option(T&) noexcept;
+  ~Option() noexcept;
+
+  Option<T&>& operator=(Option&&) noexcept;
+  const T& operator*() const noexcept;
+  const T* operator->() const noexcept;
+  T& operator*() noexcept;
+  T* operator->() noexcept;
+
+  bool operator==(const Option &) const noexcept;
+  bool operator!=(const Option &) const noexcept;
+
+  bool has_value() const noexcept;
+  const T& value() const noexcept;
+  T& value() noexcept;
+  void reset();
+  void set(T&) noexcept;
+  static Option<T&> from_raw(T*) noexcept;
+  T* into_raw() noexcept;
+private:
+  void* repr;
+
+  void drop() noexcept;
+};
+
+template <typename T>
+class Option<const T&> {
+public:
+  Option() noexcept;
+  Option(const Option&) noexcept;
+  Option(Option&&) noexcept;
+  Option(const T&) noexcept;
+  ~Option() noexcept;
+
+  Option<const T&>& operator=(const Option&) noexcept;
+  Option<const T&>& operator=(Option&&) noexcept;
+  const T& operator*() const noexcept;
+  const T* operator->() const noexcept;
+
+  bool operator==(const Option &) const noexcept;
+  bool operator!=(const Option &) const noexcept;
+
+  bool has_value() const noexcept;
+  const T& value() const noexcept;
+  void reset();
+  void set(const T&) noexcept;
+  static Option<const T&> from_raw(const T*) noexcept;
+  const T* into_raw() const noexcept;
+private:
+  void* repr;
+
+  void drop() noexcept;
+};
+
+template <typename T>
+class Option<Box<T>> {
+public:
+  Option() noexcept;
+  Option(Option&&) noexcept;
+  Option(Box<T>&&) noexcept;
+  ~Option() noexcept;
+
+  Option<Box<T>>& operator=(Option&&) noexcept;
+  const Box<T>& operator*() const noexcept;
+  const Box<T>* operator->() const noexcept;
+  Box<T>& operator*() noexcept;
+  Box<T>* operator->() noexcept;
+
+  bool operator==(const Option &) const noexcept;
+  bool operator!=(const Option &) const noexcept;
+
+  bool has_value() const noexcept;
+  const Box<T>& value() const noexcept;
+  Box<T>& value() noexcept;
+  void reset();
+  void set(Box<T>) noexcept;
+
+  // Important: requires that `raw` came from an into_raw call. Do not pass a
+  // pointer from `new` or any other source.
+  static Option<Box<T>> from_raw(T*) noexcept;
+  T* into_raw() noexcept;
+private:
+  void* repr;
+
+  void drop() noexcept;
+};
+
+template <typename T>
+class Option<Vec<T>> {
+public:
+  Option() noexcept;
+  Option(Option&&) noexcept;
+  Option(Vec<T>&&) noexcept;
+  ~Option() noexcept;
+
+  Option<Vec<T>>& operator=(Option&&) noexcept;
+  const Vec<T>& operator*() const noexcept;
+  const Vec<T>* operator->() const noexcept;
+  Vec<T>& operator*() noexcept;
+  Vec<T>* operator->() noexcept;
+
+  bool has_value() const noexcept;
+  const Vec<T>& value() const noexcept;
+  Vec<T>& value() noexcept;
+  void reset();
+  void set(Vec<T>) noexcept;
+
+  // Internal API only intended for the cxxbridge code generator.
+  Option(unsafe_bitcopy_t, const Option &) noexcept;
+private:
+  std::array<std::uintptr_t, 3> repr;
+
+  void drop() noexcept;
+};
+
+#define OPTION_DIRECT_DECL(INNER, REPR, COUNT)                    \
+template<>                                                        \
+class Option<INNER> {                                             \
+public:                                                           \
+  Option() noexcept;                                              \
+  Option(Option&&) noexcept;                                      \
+  Option(INNER&&) noexcept;                                       \
+  ~Option() noexcept;                                             \
+                                                                  \
+  Option<INNER>& operator=(Option&&) noexcept;                    \
+  const INNER& operator*() const noexcept;                        \
+  const INNER* operator->() const noexcept;                       \
+  INNER& operator*() noexcept;                                    \
+  INNER* operator->() noexcept;                                   \
+                                                                  \
+  bool operator==(const Option &) const noexcept;                 \
+  bool operator!=(const Option &) const noexcept;                 \
+                                                                  \
+  bool has_value() const noexcept;                                \
+  const INNER& value() const noexcept;                            \
+  INNER& value() noexcept;                                        \
+  void reset();                                                   \
+  void set(INNER) noexcept;                                       \
+                                                                  \
+  Option(unsafe_bitcopy_t, const Option &) noexcept;              \
+private:                                                          \
+  std::array<REPR, COUNT> repr;                                                      \
+                                                                  \
+  void drop() noexcept;                                           \
+};
+
+OPTION_DIRECT_DECL(String, std::uintptr_t, 3)
+#endif // CXXBRIDGE1_RUST_OPTION
 
 #ifndef CXXBRIDGE1_RUST_ERROR
 #define CXXBRIDGE1_RUST_ERROR
@@ -917,230 +987,6 @@ template <typename T>
 Box<T>::Box(uninit) noexcept {}
 #endif // CXXBRIDGE1_RUST_BOX
 
-
-#ifndef CXXBRIDGE1_RUST_OPTION
-#define CXXBRIDGE1_RUST_OPTION
-template <typename T>
-Option<T&>::Option(Option&& other) noexcept {
-  new (this) Option();
-  if (other.has_value()) {
-    set(other.value());
-  }
-  new (&other) Option();
-}
-
-template <typename T>
-Option<T&>::Option(T& value) noexcept {
-  new (this) Option();
-  set(value);
-}
-
-template <typename T>
-Option<T&>::~Option() noexcept {
-  this->drop();
-}
-
-template <typename T>
-Option<T&>& Option<T&>::operator=(Option&& other) noexcept {
-  this->reset();
-  if (other.has_value()) {
-    set(other.value());
-  }
-  new (&other) Option();
-  return *this;
-}
-
-template <typename T>
-const T& Option<T&>::operator*() const noexcept {
-  return value();
-}
-
-template <typename T>
-const T* Option<T&>::operator->() const noexcept {
-  return &value();
-}
-
-template <typename T>
-T& Option<T&>::operator*() noexcept {
-  return value();
-}
-
-template <typename T>
-T* Option<T&>::operator->() noexcept {
-  return &value();
-}
-
-template <typename T>
-void Option<T&>::reset() {
-  this->drop();
-  new (this) Option();
-}
-
-template <typename T>
-Option<T&> Option<T&>::from_raw(T* ptr) noexcept {
-  Option<T&> opt{*ptr};
-  return opt;
-}
-
-template <typename T>
-T* Option<T&>::into_raw() noexcept {
-  if (has_value()) {
-    return &value();
-  } else {
-    return nullptr;
-  }
-}
-//////// Option<const T&> ////////
-template <typename T>
-Option<const T&>::Option(const Option& other) noexcept {
-  new (this) Option();
-  if (other.has_value()) {
-    set(other.value());
-  }
-}
-
-template <typename T>
-Option<const T&>::Option(Option&& other) noexcept {
-  new (this) Option();
-  if (other.has_value()) {
-    set(other.value());
-  }
-  new (&other) Option();
-}
-
-template <typename T>
-Option<const T&>::Option(const T& value) noexcept {
-  new (this) Option();
-  set(value);
-}
-
-template <typename T>
-Option<const T&>::~Option() noexcept {
-  this->drop();
-}
-
-template <typename T>
-Option<const T&>& Option<const T&>::operator=(const Option& other) noexcept {
-  this->reset();
-  if (other.has_value()) {
-    set(other.value());
-  }
-  return *this;
-}
-
-template <typename T>
-Option<const T&>& Option<const T&>::operator=(Option&& other) noexcept {
-  this->reset();
-  if (other.has_value()) {
-    set(other.value());
-  }
-  new (&other) Option();
-  return *this;
-}
-
-template <typename T>
-const T& Option<const T&>::operator*() const noexcept {
-  return value();
-}
-
-template <typename T>
-const T* Option<const T&>::operator->() const noexcept {
-  return &value();
-}
-
-template <typename T>
-void Option<const T&>::reset() {
-  this->drop();
-  new (this) Option();
-}
-
-template <typename T>
-Option<const T&> Option<const T&>::from_raw(const T* ptr) noexcept {
-  Option<const T&> opt{*ptr};
-  return opt;
-}
-
-template <typename T>
-const T* Option<const T&>::into_raw() const noexcept {
-  if (has_value()) {
-    return &value();
-  } else {
-    return nullptr;
-  }
-}
-//////// Option<Box<T>> ////////////
-template <typename T>
-Option<Box<T>>::Option(Option&& other) noexcept {
-  new (this) Option();
-  if (other.has_value()) {
-    set(std::move(other.value()));
-  }
-  new (&other) Option();
-}
-
-template <typename T>
-Option<Box<T>>::Option(Box<T>&& value) noexcept {
-  new (this) Option();
-  set(std::move(value));
-}
-
-template <typename T>
-Option<Box<T>>::~Option() noexcept {
-  this->drop();
-}
-
-template <typename T>
-Option<Box<T>>& Option<Box<T>>::operator=(Option&& other) noexcept {
-  this->reset();
-  if (other.has_value()) {
-    set(std::move(other.value()));
-  }
-  new (&other) Option();
-  return *this;
-}
-
-template <typename T>
-const Box<T>& Option<Box<T>>::operator*() const noexcept {
-  return value();
-}
-
-template <typename T>
-const Box<T>* Option<Box<T>>::operator->() const noexcept {
-  return &value();
-}
-
-template <typename T>
-Box<T>& Option<Box<T>>::operator*() noexcept {
-  return value();
-}
-
-template <typename T>
-Box<T>* Option<Box<T>>::operator->() noexcept {
-  return &value();
-}
-
-template <typename T>
-void Option<Box<T>>::reset() {
-  this->drop();
-  new (this) Option();
-}
-
-template <typename T>
-Option<Box<T>> Option<Box<T>>::from_raw(T* ptr) noexcept {
-  Option<Box<T>> opt{Box<T>::from_raw(ptr)};
-  return opt;
-}
-
-template <typename T>
-T* Option<Box<T>>::into_raw() noexcept {
-  if (has_value()) {
-    return value().into_raw();
-  } else {
-    return nullptr;
-  }
-}
-#endif // CXXBRIDGE1_RUST_OPTION
-
 #ifndef CXXBRIDGE1_RUST_VEC
 #define CXXBRIDGE1_RUST_VEC
 template <typename T>
@@ -1317,6 +1163,337 @@ void Vec<T>::swap(Vec &rhs) noexcept {
 template <typename T>
 Vec<T>::Vec(unsafe_bitcopy_t, const Vec &bits) noexcept : repr(bits.repr) {}
 #endif // CXXBRIDGE1_RUST_VEC
+
+#ifndef CXXBRIDGE1_RUST_OPTION
+#define CXXBRIDGE1_RUST_OPTION
+//////// Option<T&> ////////
+template <typename T>
+Option<T&>::Option(Option&& other) noexcept {
+  new (this) Option();
+  if (other.has_value()) {
+    set(other.value());
+  }
+  new (&other) Option();
+}
+
+template <typename T>
+Option<T&>::Option(T& value) noexcept {
+  new (this) Option();
+  set(value);
+}
+
+template <typename T>
+Option<T&>::~Option() noexcept {
+  this->drop();
+}
+
+template <typename T>
+Option<T&>& Option<T&>::operator=(Option&& other) noexcept {
+  this->reset();
+  if (other.has_value()) {
+    set(other.value());
+  }
+  new (&other) Option();
+  return *this;
+}
+
+template <typename T>
+const T& Option<T&>::operator*() const noexcept {
+  return value();
+}
+
+template <typename T>
+const T* Option<T&>::operator->() const noexcept {
+  return &value();
+}
+
+template <typename T>
+T& Option<T&>::operator*() noexcept {
+  return value();
+}
+
+template <typename T>
+T* Option<T&>::operator->() noexcept {
+  return &value();
+}
+
+template<typename T>
+bool Option<T&>::operator==(const Option& other) const noexcept {
+  if (this->has_value() && other.has_value()) {
+    return this->value() == other.value();
+  }
+  return this->has_value() == other.has_value();
+}
+
+template<typename T>
+bool Option<T&>::operator!=(const Option& other) const noexcept {
+  if (this->has_value() && other.has_value()) {
+    return this->value() != other.value();
+  }
+  return this->has_value() != other.has_value();
+}
+
+template <typename T>
+void Option<T&>::reset() {
+  this->drop();
+  new (this) Option();
+}
+
+template <typename T>
+Option<T&> Option<T&>::from_raw(T* ptr) noexcept {
+  Option<T&> opt{*ptr};
+  return opt;
+}
+
+template <typename T>
+T* Option<T&>::into_raw() noexcept {
+  if (has_value()) {
+    return &value();
+  } else {
+    return nullptr;
+  }
+}
+//////// Option<const T&> ////////
+template <typename T>
+Option<const T&>::Option(const Option& other) noexcept {
+  new (this) Option();
+  if (other.has_value()) {
+    set(other.value());
+  }
+}
+
+template <typename T>
+Option<const T&>::Option(Option&& other) noexcept {
+  new (this) Option();
+  if (other.has_value()) {
+    set(other.value());
+  }
+  new (&other) Option();
+}
+
+template <typename T>
+Option<const T&>::Option(const T& value) noexcept {
+  new (this) Option();
+  set(value);
+}
+
+template <typename T>
+Option<const T&>::~Option() noexcept {
+  this->drop();
+}
+
+template <typename T>
+Option<const T&>& Option<const T&>::operator=(const Option& other) noexcept {
+  this->reset();
+  if (other.has_value()) {
+    set(other.value());
+  }
+  return *this;
+}
+
+template <typename T>
+Option<const T&>& Option<const T&>::operator=(Option&& other) noexcept {
+  this->reset();
+  if (other.has_value()) {
+    set(other.value());
+  }
+  new (&other) Option();
+  return *this;
+}
+
+template <typename T>
+const T& Option<const T&>::operator*() const noexcept {
+  return value();
+}
+
+template <typename T>
+const T* Option<const T&>::operator->() const noexcept {
+  return &value();
+}
+
+template<typename T>
+bool Option<const T&>::operator==(const Option& other) const noexcept {
+  if (this->has_value() && other.has_value()) {
+    return this->value() == other.value();
+  }
+  return this->has_value() == other.has_value();
+}
+
+template<typename T>
+bool Option<const T&>::operator!=(const Option& other) const noexcept {
+  if (this->has_value() && other.has_value()) {
+    return this->value() != other.value();
+  }
+  return this->has_value() != other.has_value();
+}
+
+template <typename T>
+void Option<const T&>::reset() {
+  this->drop();
+  new (this) Option();
+}
+
+template <typename T>
+Option<const T&> Option<const T&>::from_raw(const T* ptr) noexcept {
+  Option<const T&> opt{*ptr};
+  return opt;
+}
+
+template <typename T>
+const T* Option<const T&>::into_raw() const noexcept {
+  if (has_value()) {
+    return &value();
+  } else {
+    return nullptr;
+  }
+}
+//////// Option<Box<T>> ////////////
+template <typename T>
+Option<Box<T>>::Option(Option&& other) noexcept {
+  new (this) Option();
+  if (other.has_value()) {
+    set(std::move(other.value()));
+  }
+  new (&other) Option();
+}
+
+template <typename T>
+Option<Box<T>>::Option(Box<T>&& value) noexcept {
+  new (this) Option();
+  set(std::move(value));
+}
+
+template <typename T>
+Option<Box<T>>::~Option() noexcept {
+  this->drop();
+}
+
+template <typename T>
+Option<Box<T>>& Option<Box<T>>::operator=(Option&& other) noexcept {
+  this->reset();
+  if (other.has_value()) {
+    set(std::move(other.value()));
+  }
+  new (&other) Option();
+  return *this;
+}
+
+template <typename T>
+const Box<T>& Option<Box<T>>::operator*() const noexcept {
+  return value();
+}
+
+template <typename T>
+const Box<T>* Option<Box<T>>::operator->() const noexcept {
+  return &value();
+}
+
+template <typename T>
+Box<T>& Option<Box<T>>::operator*() noexcept {
+  return value();
+}
+
+template <typename T>
+Box<T>* Option<Box<T>>::operator->() noexcept {
+  return &value();
+}
+
+template<typename T>
+bool Option<Box<T>>::operator==(const Option& other) const noexcept {
+  if (this->has_value() && other.has_value()) {
+    return this->value() == other.value();
+  }
+  return this->has_value() == other.has_value();
+}
+
+template<typename T>
+bool Option<Box<T>>::operator!=(const Option& other) const noexcept {
+  if (this->has_value() && other.has_value()) {
+    return this->value() != other.value();
+  }
+  return this->has_value() != other.has_value();
+}
+
+template <typename T>
+void Option<Box<T>>::reset() {
+  this->drop();
+  new (this) Option();
+}
+
+template <typename T>
+Option<Box<T>> Option<Box<T>>::from_raw(T* ptr) noexcept {
+  Option<Box<T>> opt{Box<T>::from_raw(ptr)};
+  return opt;
+}
+
+template <typename T>
+T* Option<Box<T>>::into_raw() noexcept {
+  if (has_value()) {
+    return value().into_raw();
+  } else {
+    return nullptr;
+  }
+}
+//////// Option<Vec<T>> ////////////
+template <typename T>
+Option<Vec<T>>::Option(Option&& other) noexcept {
+  new (this) Option();
+  if (other.has_value()) {
+    set(std::move(other.value()));
+  }
+  new (&other) Option();
+}
+
+template <typename T>
+Option<Vec<T>>::Option(Vec<T>&& value) noexcept {
+  new (this) Option();
+  set(std::move(value));
+}
+
+template <typename T>
+Option<Vec<T>>::~Option() noexcept {
+  this->drop();
+}
+
+template <typename T>
+Option<Vec<T>>& Option<Vec<T>>::operator=(Option&& other) noexcept {
+  this->reset();
+  if (other.has_value()) {
+    set(std::move(other.value()));
+  }
+  new (&other) Option();
+  return *this;
+}
+
+template <typename T>
+const Vec<T>& Option<Vec<T>>::operator*() const noexcept {
+  return value();
+}
+
+template <typename T>
+const Vec<T>* Option<Vec<T>>::operator->() const noexcept {
+  return &value();
+}
+
+template <typename T>
+Vec<T>& Option<Vec<T>>::operator*() noexcept {
+  return value();
+}
+
+template <typename T>
+Vec<T>* Option<Vec<T>>::operator->() noexcept {
+  return &value();
+}
+
+template <typename T>
+void Option<Vec<T>>::reset() {
+  this->drop();
+  new (this) Option();
+}
+
+template <typename T>
+Option<Vec<T>>::Option(unsafe_bitcopy_t, const Option &bits) noexcept : repr(bits.repr) {}
+#endif // CXXBRIDGE1_RUST_OPTION
 
 #ifndef CXXBRIDGE1_IS_COMPLETE
 #define CXXBRIDGE1_IS_COMPLETE

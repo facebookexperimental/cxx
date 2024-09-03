@@ -21,6 +21,8 @@ pub(crate) enum OptionInner<'a> {
     MutRef(NamedImplKey<'a>),
     RefVec(NamedImplKey<'a>),
     MutRefVec(NamedImplKey<'a>),
+    Vec(NamedImplKey<'a>),
+    Ident(NamedImplKey<'a>),
 }
 
 #[derive(Copy, Clone)]
@@ -80,6 +82,20 @@ impl Type {
                     }
                     _ => {}
                 },
+                Type::RustVec(_) => {
+                    let impl_key = ty.inner.impl_key()?;
+                    match impl_key {
+                        ImplKey::RustVec(named) => {
+                            return Some(ImplKey::RustOption(OptionInner::Vec(named)))
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+                Type::Ident(ident) => {
+                    return Some(ImplKey::RustOption(OptionInner::Ident(NamedImplKey::new(
+                        ty, ident,
+                    ))))
+                }
                 _ => {}
             }
         } else if let Type::UniquePtr(ty) = self {

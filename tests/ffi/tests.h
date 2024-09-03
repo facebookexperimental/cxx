@@ -133,6 +133,10 @@ rust::Option<const rust::Vec<rust::String>&> c_return_rust_ref_option_vec_string
 rust::Option<rust::Vec<rust::String>&> c_return_rust_mut_option_vec_string(rust::Vec<rust::String>&);
 rust::Option<const rust::String&> c_return_rust_ref_option_string(const rust::String&);
 rust::Option<rust::String&> c_return_rust_mut_option_string(rust::String&);
+rust::Option<rust::Vec<uint8_t>> c_return_rust_option_vec_native();
+rust::Option<rust::Vec<Shared>> c_return_rust_option_vec_shared();
+rust::Option<rust::Vec<rust::String>> c_return_rust_option_vec_string();
+rust::Option<rust::String> c_return_rust_option_string();
 size_t c_return_identity(size_t n);
 size_t c_return_sum(size_t n1, size_t n2);
 Enum c_return_enum(uint16_t n);
@@ -204,6 +208,10 @@ void c_take_rust_ref_option_vec_string(rust::Option<const rust::Vec<rust::String
 void c_take_rust_mut_option_vec_string(rust::Option<rust::Vec<rust::String>&>);
 void c_take_rust_ref_option_string(rust::Option<const rust::String&>);
 void c_take_rust_mut_option_string(rust::Option<rust::String&>);
+void c_take_rust_option_vec_native(rust::Option<rust::Vec<uint8_t>>);
+void c_take_rust_option_vec_shared(rust::Option<rust::Vec<Shared>>);
+void c_take_rust_option_vec_string(rust::Option<rust::Vec<rust::String>>);
+void c_take_rust_option_string(rust::Option<rust::String>);
 const SharedString &c_take_ref_shared_string(const SharedString &s);
 void c_take_callback(rust::Fn<size_t(rust::String)> callback);
 void c_take_callback_ref(rust::Fn<void(const rust::String &)> callback);
