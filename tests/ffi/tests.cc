@@ -767,6 +767,38 @@ void c_take_rust_mut_option_string(rust::Option<rust::String&> opt) {
   }
 }
 
+void c_take_rust_option_vec_native(rust::Option<rust::Vec<uint8_t>> opt) {
+  if (opt.has_value()) {
+    const auto& value = opt.value();
+    if (value[0] == 20 && value[1] == 24) {
+      cxx_test_suite_set_correct();
+    }
+  }
+}
+
+void c_take_rust_option_vec_shared(rust::Option<rust::Vec<Shared>> opt) {
+  if (opt.has_value()) {
+    if (opt.value()[0].z == 2024) {
+      cxx_test_suite_set_correct();
+    }
+  }
+}
+
+void c_take_rust_option_vec_string(rust::Option<rust::Vec<rust::String>> opt) {
+  if (opt.has_value()) {
+    const auto& value = opt.value();
+    if (std::string(value[0]) == "2024") {
+      cxx_test_suite_set_correct();
+    }
+  }
+}
+
+void c_take_rust_option_string(rust::Option<rust::String> opt) {
+  if (opt.has_value() && std::string(opt.value()) == "2024") {
+    cxx_test_suite_set_correct();
+  }
+}
+
 const SharedString &c_take_ref_shared_string(const SharedString &s) {
   if (std::string(s.msg) == "2020") {
     cxx_test_suite_set_correct();
@@ -888,6 +920,28 @@ rust::Option<const rust::String&> c_try_return_rust_ref_option_string() {
 
 rust::Option<rust::String&> c_try_return_rust_mut_option_string() {
     throw std::runtime_error("unimplemented");
+}
+
+rust::Option<rust::Vec<uint8_t>> c_return_rust_option_vec_native() {
+  rust::Option<rust::Vec<uint8_t>> opt;
+  opt.set(rust::Vec<uint8_t>{20, 24});
+  return rust::Option<rust::Vec<uint8_t>>{std::move(opt)};
+}
+
+rust::Option<rust::Vec<Shared>> c_return_rust_option_vec_shared() {
+  rust::Option<rust::Vec<Shared>> opt;
+  opt.set(rust::Vec<Shared>{Shared{2024}});
+  return rust::Option<rust::Vec<Shared>>{std::move(opt)};
+}
+
+rust::Option<rust::Vec<rust::String>> c_return_rust_option_vec_string() {
+  rust::Option<rust::Vec<rust::String>> opt;
+  opt.set({rust::Vec<rust::String>{"2024"}});
+  return rust::Option<rust::Vec<rust::String>>{std::move(opt)};
+}
+
+rust::Option<rust::String> c_return_rust_option_string() {
+  return rust::Option<rust::String>{rust::String{"2024"}};
 }
 
 const rust::String &c_try_return_ref(const rust::String &s) { return s; }
@@ -1113,6 +1167,13 @@ extern "C" const char *cxx_run_test() noexcept {
   ASSERT(r_return_enum(0) == Enum::AVal);
   ASSERT(r_return_enum(1) == Enum::BVal);
   ASSERT(r_return_enum(2021) == Enum::CVal);
+  auto option_vec_native = r_return_rust_option_vec_native();
+  ASSERT(option_vec_native.has_value() && option_vec_native.value()[0] == 20 && option_vec_native.value()[1] == 24);
+  auto option_vec_shared = r_return_rust_option_vec_shared();
+  ASSERT(option_vec_shared.has_value() && option_vec_shared.value()[0].z == 2024);
+  auto option_vec_string = r_return_rust_option_vec_string();
+  ASSERT(option_vec_string.has_value() && option_vec_string.value()[0] == rust::String{"2024"});
+  ASSERT(r_return_rust_option_string() == rust::Option<rust::String>{rust::String{"2024"}});
 
   r_take_primitive(2020);
   r_take_shared(Shared{2020});
@@ -1130,6 +1191,10 @@ extern "C" const char *cxx_run_test() noexcept {
   empty_vector.reserve(10);
   r_take_ref_empty_vector(empty_vector);
   r_take_enum(Enum::AVal);
+  r_take_rust_option_vec_native(rust::Option<rust::Vec<uint8_t>>{rust::Vec<uint8_t>{20, 24}});
+  r_take_rust_option_vec_shared(rust::Option<rust::Vec<Shared>>{rust::Vec<Shared>{Shared{2024}}});
+  r_take_rust_option_vec_string(rust::Option<rust::Vec<rust::String>>{rust::Vec<rust::String>{rust::String{"2024"}}});
+  r_take_rust_option_string(rust::Option<rust::String>{rust::String{"2024"}});
 
   ASSERT(r_try_return_primitive() == 2020);
   try {
@@ -1241,6 +1306,9 @@ extern "C" const char *cxx_run_test() noexcept {
   ASSERT(sizeof(rust::Option<rust::Box<Shared>>) == sizeof(void *));
   ASSERT(sizeof(rust::Option<int&>) == sizeof(void *));
   ASSERT(sizeof(rust::Option<const int&>) == sizeof(void *));
+  ASSERT(sizeof(rust::Option<rust::Vec<Shared>>) == sizeof(rust::Vec<Shared>));
+  ASSERT(sizeof(rust::Option<rust::Vec<uint8_t>>) == sizeof(rust::Vec<uint8_t>));
+  ASSERT(sizeof(rust::Option<rust::String>) == sizeof(rust::String));
 
   cxx_test_suite_set_correct();
   return nullptr;

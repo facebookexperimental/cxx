@@ -820,9 +820,26 @@ fn write_cxx_function_shim<'a>(out: &mut OutFile<'a>, efn: &'a ExternFn) {
         if i > 0 {
             write!(out, ", ");
         }
-        if let Type::RustBox(_) | Type::RustOption(_) = &arg.ty {
+        if let Type::RustBox(_) = &arg.ty {
             write_type(out, &arg.ty);
             write!(out, "::from_raw({})", arg.name.cxx);
+        } else if let Type::RustOption(inner) = &arg.ty {
+            match &inner.inner {
+                Type::RustVec(_) => {
+                    out.builtin.unsafe_bitcopy = true;
+                    write_type(out, &arg.ty);
+                    write!(out, "(::rust::unsafe_bitcopy, *{})", arg.name.cxx,);
+                }
+                Type::Ident(ty) if ty.rust == RustString => {
+                    out.builtin.unsafe_bitcopy = true;
+                    write_type(out, &arg.ty);
+                    write!(out, "(::rust::unsafe_bitcopy, *{})", arg.name.cxx,);
+                }
+                _ => {
+                    write_type(out, &arg.ty);
+                    write!(out, "::from_raw({})", arg.name.cxx);
+                }
+            }
         } else if let Type::UniquePtr(_) = &arg.ty {
             write_type(out, &arg.ty);
             write!(out, "({})", arg.name.cxx);
@@ -837,6 +854,8 @@ fn write_cxx_function_shim<'a>(out: &mut OutFile<'a>, efn: &'a ExternFn) {
             out.builtin.unsafe_bitcopy = true;
             write_type(out, &arg.ty);
             write!(out, "(::rust::unsafe_bitcopy, *{})", arg.name.cxx);
+        } else if let Type::RustOption(_) = arg.ty {
+            write!(out, "std::move(* {})", arg.name.cxx);
         } else if out.types.needs_indirect_abi(&arg.ty) {
             out.include.utility = true;
             write!(out, "::std::move(*{})", arg.name.cxx);
@@ -846,7 +865,11 @@ fn write_cxx_function_shim<'a>(out: &mut OutFile<'a>, efn: &'a ExternFn) {
     }
     write!(out, ")");
     match &efn.ret {
-        Some(Type::RustBox(_) | Type::RustOption(_)) => write!(out, ".into_raw()"),
+        Some(Type::RustBox(_)) => write!(out, ".into_raw()"),
+        Some(Type::RustOption(inner)) => match inner.inner {
+            Type::Ident(_) | Type::RustVec(_) => {}
+            _ => write!(out, ".into_raw()"),
+        },
         Some(Type::UniquePtr(_)) => write!(out, ".release()"),
         Some(Type::Str(_) | Type::SliceRef(_)) if !indirect_return => write!(out, ")"),
         _ => {}
@@ -1051,10 +1074,17 @@ fn write_rust_function_shim_impl(
     } else if let Some(ret) = &sig.ret {
         write!(out, "return ");
         match ret {
-            Type::RustBox(_) | Type::RustOption(_) => {
+            Type::RustBox(_) => {
                 write_type(out, ret);
                 write!(out, "::from_raw(");
             }
+            Type::RustOption(inner) => match inner.inner {
+                Type::Ident(_) | Type::RustVec(_) => {}
+                _ => {
+                    write_type(out, ret);
+                    write!(out, "::from_raw(");
+                }
+            },
             Type::UniquePtr(_) => {
                 write_type(out, ret);
                 write!(out, "(");
@@ -1092,7 +1122,11 @@ fn write_rust_function_shim_impl(
         }
         write!(out, "{}", arg.name.cxx);
         match &arg.ty {
-            Type::RustBox(_) | Type::RustOption(_) => write!(out, ".into_raw()"),
+            Type::RustBox(_) => write!(out, ".into_raw()"),
+            Type::RustOption(inner) => match inner.inner {
+                Type::Ident(_) | Type::RustVec(_) => write!(out, "$.value"),
+                _ => write!(out, ".into_raw()"),
+            },
             Type::UniquePtr(_) => write!(out, ".release()"),
             ty if ty != RustString && out.types.needs_indirect_abi(ty) => write!(out, "$.value"),
             _ => {}
@@ -1114,15 +1148,17 @@ fn write_rust_function_shim_impl(
     }
     write!(out, ")");
     if !indirect_return {
-        if let Some(
-            Type::RustBox(_)
-            | Type::UniquePtr(_)
-            | Type::Str(_)
-            | Type::SliceRef(_)
-            | Type::RustOption(_),
-        ) = &sig.ret
-        {
-            write!(out, ")");
+        if let Some(ret) = &sig.ret {
+            match &ret {
+                Type::RustBox(_) | Type::UniquePtr(_) | Type::Str(_) | Type::SliceRef(_) => {
+                    write!(out, ")");
+                }
+                Type::RustOption(inner) => match &inner.inner {
+                    Type::Ident(_) | Type::RustVec(_) => {}
+                    _ => write!(out, ")"),
+                },
+                _ => {}
+            }
         }
     }
     writeln!(out, ";");
@@ -1172,7 +1208,14 @@ fn write_indirect_return_type(out: &mut OutFile, ty: &Type) {
             }
             write!(out, "*");
         }
-        Type::RustOption(ty) => write_indirect_return_type(out, &ty.inner),
+        Type::RustOption(ty) => match &ty.inner {
+            Type::RustBox(_) | Type::Ref(_) => write_indirect_return_type(out, &ty.inner),
+            _ => {
+                write!(out, "::rust::Option<");
+                write_indirect_return_type(out, &ty.inner);
+                write!(out, ">");
+            }
+        },
         _ => write_type(out, ty),
     }
 }
@@ -1180,7 +1223,7 @@ fn write_indirect_return_type(out: &mut OutFile, ty: &Type) {
 fn write_indirect_return_type_space(out: &mut OutFile, ty: &Type) {
     write_indirect_return_type(out, ty);
     match ty {
-        Type::RustBox(_) | Type::UniquePtr(_) | Type::Ref(_) | Type::RustOption(_) => {}
+        Type::RustBox(_) | Type::UniquePtr(_) | Type::Ref(_) => {}
         Type::Str(_) | Type::SliceRef(_) => write!(out, " "),
         _ => write_space_after_type(out, ty),
     }
@@ -1200,6 +1243,11 @@ fn write_extern_return_type_space(out: &mut OutFile, ty: Option<&Type>) {
                     write!(out, "const ");
                 }
                 write!(out, "*");
+            }
+            Type::RustVec(_) | Type::Ident(_) => {
+                if out.types.needs_indirect_abi(&ty.inner) {
+                    write!(out, "void ");
+                }
             }
             _ => unreachable!(),
         },
@@ -1237,7 +1285,11 @@ fn write_extern_arg(out: &mut OutFile, arg: &Var) {
                 }
                 write!(out, "*");
             }
-            _ => unreachable!(),
+            _ => {
+                write!(out, "::rust::Option<");
+                write_type_space(out, &ty.inner);
+                write!(out, "> const ");
+            }
         },
         _ => write_type_space(out, &arg.ty),
     }
@@ -1398,6 +1450,8 @@ enum RustOption<'a> {
     MutRef(&'a Ident),
     RefVec(&'a Ident),
     MutRefVec(&'a Ident),
+    Vec(&'a Ident),
+    Ident(&'a Ident),
 }
 
 trait ToTypename {
@@ -1436,6 +1490,10 @@ impl<'a> ToTypename for RustOption<'a> {
             RustOption::MutRefVec(inner) => {
                 format!("::rust::cxxbridge1::Vec<{}>&", inner.to_typename(types))
             }
+            RustOption::Vec(inner) => {
+                format!("::rust::cxxbridge1::Vec<{}>", inner.to_typename(types))
+            }
+            RustOption::Ident(ident) => ident.to_typename(types),
         }
     }
 }
@@ -1464,13 +1522,17 @@ impl<'a> ToMangled for UniquePtr<'a> {
 impl<'a> ToMangled for RustOption<'a> {
     fn to_mangled(&self, types: &Types) -> Symbol {
         match self {
-            RustOption::RustBox(inner) => symbol::join(&[&"Box", &inner.to_mangled(types)]),
-            RustOption::Ref(inner) => symbol::join(&[&"const", &inner.to_mangled(types)]),
-            RustOption::MutRef(inner) => symbol::join(&[&inner.to_mangled(types)]),
+            RustOption::RustBox(inner) => symbol::join(&[&"rust_box", &inner.to_mangled(types)]),
+            RustOption::Ref(inner) => symbol::join(&[&"const", &"ref", &inner.to_mangled(types)]),
+            RustOption::MutRef(inner) => symbol::join(&[&"ref", &inner.to_mangled(types)]),
             RustOption::RefVec(inner) => {
-                symbol::join(&[&"const", &"Vec", &inner.to_mangled(types)])
+                symbol::join(&[&"const", &"ref", &"rust_vec", &inner.to_mangled(types)])
             }
-            RustOption::MutRefVec(inner) => symbol::join(&[&"Vec", &inner.to_mangled(types)]),
+            RustOption::MutRefVec(inner) => {
+                symbol::join(&[&"ref", &"rust_vec", &inner.to_mangled(types)])
+            }
+            RustOption::Vec(inner) => symbol::join(&[&"rust_vec", &inner.to_mangled(types)]),
+            RustOption::Ident(ident) => symbol::join(&[&ident.to_mangled(types)]),
         }
     }
 }
@@ -1627,6 +1689,25 @@ fn write_rust_option_extern(out: &mut OutFile, inner: OptionInner) {
                 resolve.name.to_fully_qualified()
             );
             (RustOption::MutRefVec(key.rust), false, value_type)
+        }
+        OptionInner::Vec(key) => {
+            if out.types.try_resolve(key.rust).is_none() {
+                return;
+            }
+            let resolve = out.types.resolve(&key);
+            let value_type = format!(
+                "::rust::cxxbridge1::Vec<{}>",
+                resolve.name.to_fully_qualified()
+            );
+            (RustOption::Vec(key.rust), false, value_type)
+        }
+        OptionInner::Ident(key) => {
+            if out.types.try_resolve(key.rust).is_none() {
+                return;
+            }
+            let resolve = out.types.resolve(&key);
+            let value_type = resolve.name.to_fully_qualified();
+            (RustOption::Ident(key.rust), false, value_type)
         }
     };
     let inner = element.to_typename(out.types);
@@ -1823,6 +1904,18 @@ fn write_rust_option_impl(out: &mut OutFile, inner: OptionInner) {
                 return;
             }
             (RustOption::MutRefVec(key.rust), false, false)
+        }
+        OptionInner::Vec(key) => {
+            if out.types.try_resolve(key.rust).is_none() {
+                return;
+            }
+            (RustOption::Vec(key.rust), false, true)
+        }
+        OptionInner::Ident(key) => {
+            if out.types.try_resolve(key.rust).is_none() {
+                return;
+            }
+            (RustOption::Ident(key.rust), false, true)
         }
     };
     let inner = element.to_typename(out.types);

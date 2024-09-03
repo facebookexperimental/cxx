@@ -38,6 +38,7 @@ macro_rules! check {
 }
 
 #[test]
+#[allow(clippy::too_many_lines)]
 fn test_c_return() {
     let mut shared = ffi::Shared { z: 2020 };
     let ns_shared = ffi::AShared { z: 2020 };
@@ -141,6 +142,16 @@ fn test_c_return() {
         Some(&mut "2020".to_string()),
         ffi::c_return_rust_mut_option_string(&mut "2020".to_string())
     );
+    assert_eq!(Some(vec![20, 24]), ffi::c_return_rust_option_vec_native(),);
+    assert_eq!(
+        Some(vec![ffi::Shared { z: 2024 }]),
+        ffi::c_return_rust_option_vec_shared(),
+    );
+    assert_eq!(
+        Some(vec!["2024".to_string()]),
+        ffi::c_return_rust_option_vec_string()
+    );
+    assert_eq!(Some("2024".to_string()), ffi::c_return_rust_option_string());
     assert_eq!(2020, ffi::c_return_identity(2020));
     assert_eq!(2021, ffi::c_return_sum(2020, 1));
     match ffi::c_return_enum(0) {
@@ -182,6 +193,7 @@ fn test_c_try_return() {
 }
 
 #[test]
+#[allow(clippy::too_many_lines)]
 fn test_c_take() {
     let unique_ptr = ffi::c_return_unique_ptr();
     let unique_ptr_ns = ffi2::c_return_ns_unique_ptr();
@@ -313,6 +325,14 @@ fn test_c_take() {
     check!(ffi::c_take_rust_mut_option_string(Some(
         &mut "2020".to_string()
     )));
+    check!(ffi::c_take_rust_option_vec_native(Some(vec![20, 24])));
+    check!(ffi::c_take_rust_option_vec_shared(Some(vec![
+        ffi::Shared { z: 2024 }
+    ])));
+    check!(ffi::c_take_rust_option_vec_string(Some(vec![
+        "2024".to_string()
+    ])));
+    check!(ffi::c_take_rust_option_string(Some("2024".to_string())));
 
     check!(ffi::c_take_enum(ffi::Enum::AVal));
     check!(ffi::c_take_ns_enum(ffi::AEnum::AAVal));

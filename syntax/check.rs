@@ -146,6 +146,12 @@ fn check_type_rust_option(cx: &mut Check, ty: &Ty1) {
     match &ty.inner {
         Type::RustBox(_) => return,
         Type::Ref(_) => return,
+        Type::RustVec(_) => return,
+        Type::Ident(ident) => {
+            if let Some(RustString) = Atom::from(&ident.rust) {
+                return;
+            }
+        }
         _ => {}
     }
 
