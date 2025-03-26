@@ -1331,6 +1331,13 @@ fn parse_type_path(ty: &TypePath) -> Result<Type> {
         }
     }
 
+    if ty.qself.is_none() && path.segments.len() == 2 && path.segments[0].ident == "cxx" {
+        return Err(Error::new_spanned(
+            ty,
+            "unexpected `cxx::` qualifier found in a `#[cxx::bridge]`",
+        ));
+    }
+
     Err(Error::new_spanned(ty, "unsupported type"))
 }
 

@@ -1,19 +1,19 @@
-#![forbid(unsafe_op_in_unsafe_fn)]
 #![allow(
     clippy::boxed_local,
-    clippy::derive_partial_eq_without_eq,
-    clippy::just_underscores_and_digits,
+    clippy::elidable_lifetime_names,
     clippy::missing_errors_doc,
     clippy::missing_safety_doc,
     clippy::must_use_candidate,
     clippy::needless_lifetimes,
-    clippy::needless_pass_by_ref_mut,
     clippy::needless_pass_by_value,
-    clippy::ptr_arg,
-    clippy::trivially_copy_pass_by_ref,
+    clippy::unnecessary_literal_bound,
     clippy::unnecessary_wraps,
     clippy::unused_self
 )]
+#![allow(unknown_lints)]
+#![warn(rust_2024_compatibility)]
+#![forbid(unsafe_op_in_unsafe_fn)]
+#![deny(warnings)] // Check that expansion of `cxx::bridge` doesn't trigger warnings.
 
 pub mod cast;
 pub mod module;
@@ -328,6 +328,7 @@ pub mod ffi {
         fn r_return_ref(shared: &Shared) -> &usize;
         fn r_return_mut(shared: &mut Shared) -> &mut usize;
         fn r_return_str(shared: &Shared) -> &str;
+        unsafe fn r_return_str_via_out_param<'a>(shared: &'a Shared, out_param: &mut &'a str);
         fn r_return_sliceu8(shared: &Shared) -> &[u8];
         fn r_return_mutsliceu8(slice: &mut [u8]) -> &mut [u8];
         fn r_return_rust_string() -> String;
@@ -578,6 +579,7 @@ fn r_return_box() -> Box<R> {
 }
 
 fn r_return_unique_ptr() -> UniquePtr<ffi::C> {
+    #[allow(missing_unsafe_on_extern)]
     extern "C" {
         fn cxx_test_suite_get_unique_ptr() -> *mut ffi::C;
     }
@@ -585,6 +587,7 @@ fn r_return_unique_ptr() -> UniquePtr<ffi::C> {
 }
 
 fn r_return_shared_ptr() -> SharedPtr<ffi::C> {
+    #[allow(missing_unsafe_on_extern)]
     extern "C" {
         fn cxx_test_suite_get_shared_ptr(repr: *mut SharedPtr<ffi::C>);
     }
@@ -609,6 +612,11 @@ fn r_return_str(shared: &ffi::Shared) -> &str {
     "2020"
 }
 
+fn r_return_str_via_out_param<'a>(shared: &'a ffi::Shared, out_param: &mut &'a str) {
+    let _ = shared;
+    *out_param = "2020";
+}
+
 fn r_return_sliceu8(shared: &ffi::Shared) -> &[u8] {
     let _ = shared;
     b"2020"
@@ -623,6 +631,7 @@ fn r_return_rust_string() -> String {
 }
 
 fn r_return_unique_ptr_string() -> UniquePtr<CxxString> {
+    #[allow(missing_unsafe_on_extern)]
     extern "C" {
         fn cxx_test_suite_get_unique_ptr_string() -> *mut CxxString;
     }

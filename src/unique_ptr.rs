@@ -7,14 +7,16 @@ use crate::ExternType;
 use alloc::string::String;
 #[cfg(feature = "std")]
 use alloc::vec::Vec;
+use core::cmp::Ordering;
 use core::ffi::c_void;
 use core::fmt::{self, Debug, Display};
+use core::hash::{Hash, Hasher};
 use core::marker::PhantomData;
 use core::mem::{self, MaybeUninit};
 use core::ops::{Deref, DerefMut};
 use core::pin::Pin;
 #[cfg(feature = "std")]
-use std::io::{self, Read};
+use std::io::{self, IoSlice, Read, Seek, SeekFrom, Write};
 
 /// Binding to C++ `std::unique_ptr<T, std::default_delete<T>>`.
 #[repr(C)]
@@ -55,21 +57,22 @@ where
     ///
     /// This is the opposite of [std::unique_ptr\<T\>::operator bool](https://en.cppreference.com/w/cpp/memory/unique_ptr/operator_bool).
     pub fn is_null(&self) -> bool {
-        let ptr = unsafe { T::__get(self.repr) };
-        ptr.is_null()
+        self.as_ptr().is_null()
     }
 
     /// Returns a reference to the object owned by this UniquePtr if any,
     /// otherwise None.
     pub fn as_ref(&self) -> Option<&T> {
-        unsafe { T::__get(self.repr).as_ref() }
+        let ptr = self.as_ptr();
+        unsafe { ptr.as_ref() }
     }
 
     /// Returns a mutable pinned reference to the object owned by this UniquePtr
     /// if any, otherwise None.
     pub fn as_mut(&mut self) -> Option<Pin<&mut T>> {
+        let ptr = self.as_mut_ptr();
         unsafe {
-            let mut_reference = (T::__get(self.repr) as *mut T).as_mut()?;
+            let mut_reference = ptr.as_mut()?;
             Some(Pin::new_unchecked(mut_reference))
         }
     }
@@ -88,6 +91,23 @@ where
                 display(T::__typename),
             ),
         }
+    }
+
+    /// Returns a raw const pointer to the object owned by this UniquePtr if
+    /// any, otherwise the null pointer.
+    pub fn as_ptr(&self) -> *const T {
+        unsafe { T::__get(self.repr) }
+    }
+
+    /// Returns a raw mutable pointer to the object owned by this UniquePtr if
+    /// any, otherwise the null pointer.
+    ///
+    /// As with [std::unique_ptr\<T\>::get](https://en.cppreference.com/w/cpp/memory/unique_ptr/get),
+    /// this doesn't require that you hold an exclusive reference to the
+    /// UniquePtr. This differs from Rust norms, so extra care should be taken
+    /// in the way the pointer is used.
+    pub fn as_mut_ptr(&self) -> *mut T {
+        self.as_ptr() as *mut T
     }
 
     /// Consumes the UniquePtr, releasing its ownership of the heap-allocated T.
@@ -187,6 +207,47 @@ where
     }
 }
 
+impl<T> PartialEq for UniquePtr<T>
+where
+    T: PartialEq + UniquePtrTarget,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.as_ref() == other.as_ref()
+    }
+}
+
+impl<T> Eq for UniquePtr<T> where T: Eq + UniquePtrTarget {}
+
+impl<T> PartialOrd for UniquePtr<T>
+where
+    T: PartialOrd + UniquePtrTarget,
+{
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        PartialOrd::partial_cmp(&self.as_ref(), &other.as_ref())
+    }
+}
+
+impl<T> Ord for UniquePtr<T>
+where
+    T: Ord + UniquePtrTarget,
+{
+    fn cmp(&self, other: &Self) -> Ordering {
+        Ord::cmp(&self.as_ref(), &other.as_ref())
+    }
+}
+
+impl<T> Hash for UniquePtr<T>
+where
+    T: Hash + UniquePtrTarget,
+{
+    fn hash<H>(&self, hasher: &mut H)
+    where
+        H: Hasher,
+    {
+        self.as_ref().hash(hasher);
+    }
+}
+
 /// Forwarding `Read` trait implementation in a manner similar to `Box<T>`.
 ///
 /// Note that the implementation will panic for null `UniquePtr<T>`.
@@ -218,6 +279,79 @@ where
 
     // TODO: Foward other `Read` trait methods when they get stabilized (e.g.
     // `read_buf` and/or `is_read_vectored`).
+}
+
+/// Forwarding `Seek` trait implementation in a manner similar to `Box<T>`.
+///
+/// Note that the implementation will panic for null `UniquePtr<T>`.
+#[cfg(feature = "std")]
+impl<T> Seek for UniquePtr<T>
+where
+    for<'a> Pin<&'a mut T>: Seek,
+    T: UniquePtrTarget,
+{
+    #[inline]
+    fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
+        self.pin_mut().seek(pos)
+    }
+
+    #[inline]
+    fn rewind(&mut self) -> io::Result<()> {
+        self.pin_mut().rewind()
+    }
+
+    #[inline]
+    fn stream_position(&mut self) -> io::Result<u64> {
+        self.pin_mut().stream_position()
+    }
+
+    #[cfg(seek_relative)]
+    #[allow(clippy::incompatible_msrv)]
+    #[inline]
+    fn seek_relative(&mut self, offset: i64) -> io::Result<()> {
+        self.pin_mut().seek_relative(offset)
+    }
+
+    // TODO: Foward other `Seek` trait methods if/when possible:
+    // * `stream_len`: If/when stabilized
+}
+
+/// Forwarding `Write` trait implementation in a manner similar to `Box<T>`.
+///
+/// Note that the implementation will panic for null `UniquePtr<T>`.
+#[cfg(feature = "std")]
+impl<T> Write for UniquePtr<T>
+where
+    for<'a> Pin<&'a mut T>: Write,
+    T: UniquePtrTarget,
+{
+    #[inline]
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.pin_mut().write(buf)
+    }
+
+    #[inline]
+    fn write_vectored(&mut self, bufs: &[IoSlice]) -> io::Result<usize> {
+        self.pin_mut().write_vectored(bufs)
+    }
+
+    #[inline]
+    fn flush(&mut self) -> io::Result<()> {
+        self.pin_mut().flush()
+    }
+
+    #[inline]
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        self.pin_mut().write_all(buf)
+    }
+
+    #[inline]
+    fn write_fmt(&mut self, fmt: fmt::Arguments) -> io::Result<()> {
+        self.pin_mut().write_fmt(fmt)
+    }
+
+    // TODO: Foward other `Write` trait methods when they get stabilized (e.g.
+    // `write_all_vectored` and/or `is_write_vectored`).
 }
 
 /// Trait bound for types which may be used as the `T` inside of a

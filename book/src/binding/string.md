@@ -22,6 +22,8 @@ public:
   String(const std::string &);
   String(const char *);
   String(const char *, size_t);
+  String(const char8_t *);
+  String(const char8_t *, size_t);
 
   // Replaces invalid UTF-8 data with the replacement character (U+FFFD).
   static String lossy(const std::string &) noexcept;
@@ -36,8 +38,8 @@ public:
   static String lossy(const char16_t *) noexcept;
   static String lossy(const char16_t *, size_t) noexcept;
 
-  String &operator=(const String &) noexcept;
-  String &operator=(String &&) noexcept;
+  String &operator=(const String &) & noexcept;
+  String &operator=(String &&) & noexcept;
 
   explicit operator std::string() const;
 

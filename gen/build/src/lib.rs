@@ -45,31 +45,26 @@
 //! $ cxxbridge src/main.rs > path/to/mybridge.cc
 //! ```
 
-#![doc(html_root_url = "https://docs.rs/cxx-build/1.0.128")]
+#![doc(html_root_url = "https://docs.rs/cxx-build/1.0.150")]
 #![cfg_attr(not(check_cfg), allow(unexpected_cfgs))]
 #![allow(
     clippy::cast_sign_loss,
     clippy::default_trait_access,
-    clippy::derive_partial_eq_without_eq,
     clippy::doc_markdown,
+    clippy::elidable_lifetime_names,
     clippy::enum_glob_use,
     clippy::explicit_auto_deref,
-    clippy::if_same_then_else,
     clippy::inherent_to_string,
-    clippy::into_iter_without_iter,
     clippy::items_after_statements,
     clippy::match_bool,
     clippy::match_on_vec_items,
     clippy::match_same_arms,
-    clippy::module_name_repetitions,
     clippy::needless_doctest_main,
+    clippy::needless_lifetimes,
     clippy::needless_pass_by_value,
-    clippy::new_without_default,
     clippy::nonminimal_bool,
-    clippy::or_fun_call,
     clippy::redundant_else,
-    clippy::shadow_unrelated,
-    clippy::significant_drop_in_scrutinee,
+    clippy::ref_option,
     clippy::similar_names,
     clippy::single_match_else,
     clippy::struct_excessive_bools,
@@ -77,9 +72,8 @@
     clippy::too_many_arguments,
     clippy::too_many_lines,
     clippy::toplevel_ref_arg,
-    clippy::unconditional_recursion, // clippy bug: https://github.com/rust-lang/rust-clippy/issues/12133
     clippy::uninlined_format_args,
-    clippy::upper_case_acronyms,
+    clippy::upper_case_acronyms
 )]
 
 mod cargo;
@@ -117,7 +111,7 @@ pub use crate::cfg::{Cfg, CFG};
 /// additional source files or compiler flags, and lastly call its [`compile`]
 /// method to execute the C++ build.
 ///
-/// [`compile`]: https://docs.rs/cc/1.0.49/cc/struct.Build.html#method.compile
+/// [`compile`]: cc::Build::compile
 #[must_use]
 pub fn bridge(rust_source_file: impl AsRef<Path>) -> Build {
     bridges(iter::once(rust_source_file))

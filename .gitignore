@@ -3,8 +3,9 @@
 /bazel-cxx
 /bazel-out
 /bazel-testlogs
+/user.bazelrc
 /buck-out
 /expand.cc
 /expand.rs
-Cargo.lock
-target
+/target/
+/Cargo.lock
