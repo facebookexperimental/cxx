@@ -18,7 +18,7 @@
 //!
 //! <br>
 //!
-//! *Compiler support: requires rustc 1.67+ and c++11 or newer*<br>
+//! *Compiler support: requires rustc 1.73+ and c++11 or newer*<br>
 //! *[Release notes](https://github.com/dtolnay/cxx/releases)*
 //!
 //! <br>
@@ -364,7 +364,7 @@
 //! </table>
 
 #![no_std]
-#![doc(html_root_url = "https://docs.rs/cxx/1.0.128")]
+#![doc(html_root_url = "https://docs.rs/cxx/1.0.150")]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![deny(
     improper_ctypes,
@@ -380,31 +380,19 @@
 #![allow(non_camel_case_types)]
 #![allow(
     clippy::cast_possible_truncation,
-    clippy::cognitive_complexity,
-    clippy::declare_interior_mutable_const,
     clippy::doc_markdown,
-    clippy::duplicated_attributes, // clippy bug: https://github.com/rust-lang/rust-clippy/issues/12537
-    clippy::empty_enum,
-    clippy::extra_unused_type_parameters,
-    clippy::inherent_to_string,
+    clippy::elidable_lifetime_names,
     clippy::items_after_statements,
-    clippy::large_enum_variant,
     clippy::len_without_is_empty,
     clippy::missing_errors_doc,
     clippy::missing_safety_doc,
-    clippy::module_inception,
-    clippy::module_name_repetitions,
     clippy::must_use_candidate,
     clippy::needless_doctest_main,
+    clippy::needless_lifetimes,
     clippy::new_without_default,
-    clippy::or_fun_call,
-    clippy::ptr_arg,
     clippy::ptr_as_ptr,
     clippy::ptr_cast_constness,
-    clippy::toplevel_ref_arg,
-    clippy::transmute_undefined_repr, // clippy bug: https://github.com/rust-lang/rust-clippy/issues/8417
-    clippy::uninlined_format_args,
-    clippy::useless_let_if_seq,
+    clippy::uninlined_format_args
 )]
 
 #[cfg(built_with_cargo)]
@@ -466,7 +454,6 @@ mod rust_string;
 mod rust_type;
 mod rust_vec;
 mod shared_ptr;
-mod sip;
 #[path = "cxx_string.rs"]
 mod string;
 mod symbols;
