@@ -231,6 +231,7 @@ class Slice<T>::iterator final {
 public:
 #if __cplusplus >= 202002L
   using iterator_category = std::contiguous_iterator_tag;
+  using element_type = T;
 #else
   using iterator_category = std::random_access_iterator_tag;
 #endif
