@@ -1005,7 +1005,10 @@ void Option<T&>::reset() {
 
 template <typename T>
 Option<T&> Option<T&>::from_raw(T* ptr) noexcept {
-  Option<T&> opt{*ptr};
+  Option<T&> opt;
+  if (ptr) {
+    opt.set(*ptr);
+  }
   return opt;
 }
 
@@ -1083,7 +1086,10 @@ void Option<const T&>::reset() {
 
 template <typename T>
 Option<const T&> Option<const T&>::from_raw(const T* ptr) noexcept {
-  Option<const T&> opt{*ptr};
+  Option<const T&> opt;
+  if (ptr) {
+    opt.set(*ptr);
+  }
   return opt;
 }
 
@@ -1154,7 +1160,10 @@ void Option<Box<T>>::reset() {
 
 template <typename T>
 Option<Box<T>> Option<Box<T>>::from_raw(T* ptr) noexcept {
-  Option<Box<T>> opt{Box<T>::from_raw(ptr)};
+  Option<Box<T>> opt;
+  if (ptr) {
+    opt.set(Box<T>::from_raw(ptr));
+  }
   return opt;
 }
 
