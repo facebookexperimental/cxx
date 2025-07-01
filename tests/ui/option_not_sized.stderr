@@ -63,8 +63,8 @@ error[E0599]: the function or associated item `new` exists for struct `RustOptio
   |
  ::: $RUST/core/src/fmt/mod.rs
   |
-  | pub trait Debug {
-  | --------------- doesn't satisfy `dyn Debug: Sized`
+  | pub trait Debug: PointeeSized {
+  | ----------------------------- doesn't satisfy `dyn Debug: Sized`
   |
   = note: the following trait bounds were not satisfied:
           `dyn Debug: Sized`

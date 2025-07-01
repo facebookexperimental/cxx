@@ -7,7 +7,7 @@
 //! [dtolnay/cxx#235]: https://github.com/dtolnay/cxx/issues/235
 //! [https://github.com/google/autocxx]: https://github.com/google/autocxx
 
-#![doc(html_root_url = "https://docs.rs/cxx-gen/0.7.150")]
+#![doc(html_root_url = "https://docs.rs/cxx-gen/0.7.160")]
 #![deny(missing_docs)]
 #![allow(dead_code)]
 #![cfg_attr(not(check_cfg), allow(unexpected_cfgs))]
@@ -19,7 +19,6 @@
     clippy::inherent_to_string,
     clippy::items_after_statements,
     clippy::match_bool,
-    clippy::match_on_vec_items,
     clippy::match_same_arms,
     clippy::missing_errors_doc,
     clippy::must_use_candidate,
@@ -37,6 +36,7 @@
     clippy::toplevel_ref_arg,
     clippy::uninlined_format_args
 )]
+#![allow(unknown_lints, mismatched_lifetime_syntaxes)]
 
 mod error;
 mod gen;

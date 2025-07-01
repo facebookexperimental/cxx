@@ -45,7 +45,7 @@
 //! $ cxxbridge src/main.rs > path/to/mybridge.cc
 //! ```
 
-#![doc(html_root_url = "https://docs.rs/cxx-build/1.0.150")]
+#![doc(html_root_url = "https://docs.rs/cxx-build/1.0.160")]
 #![cfg_attr(not(check_cfg), allow(unexpected_cfgs))]
 #![allow(
     clippy::cast_sign_loss,
@@ -57,13 +57,13 @@
     clippy::inherent_to_string,
     clippy::items_after_statements,
     clippy::match_bool,
-    clippy::match_on_vec_items,
     clippy::match_same_arms,
     clippy::needless_doctest_main,
     clippy::needless_lifetimes,
     clippy::needless_pass_by_value,
     clippy::nonminimal_bool,
     clippy::redundant_else,
+    clippy::ref_as_ptr,
     clippy::ref_option,
     clippy::similar_names,
     clippy::single_match_else,
@@ -75,6 +75,7 @@
     clippy::uninlined_format_args,
     clippy::upper_case_acronyms
 )]
+#![allow(unknown_lints, mismatched_lifetime_syntaxes)]
 
 mod cargo;
 mod cfg;

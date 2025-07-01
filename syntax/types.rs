@@ -174,7 +174,7 @@ impl<'a> Types<'a> {
             let Some(impl_key) = ty.impl_key() else {
                 continue;
             };
-            let implicit_impl = match impl_key {
+            let implicit_impl = match &impl_key {
                 ImplKey::RustBox(ident)
                 | ImplKey::RustVec(ident)
                 | ImplKey::UniquePtr(ident)
@@ -243,9 +243,16 @@ impl<'a> Types<'a> {
 
     pub(crate) fn needs_indirect_abi(&self, ty: &Type) -> bool {
         match ty {
-            Type::RustBox(_) | Type::UniquePtr(_) | Type::RustOption(_) => false,
+            Type::RustBox(_)
+            | Type::UniquePtr(_)
+            | Type::Ref(_)
+            | Type::Ptr(_)
+            | Type::Str(_)
+            | Type::Fn(_)
+            | Type::SliceRef(_)
+            | Type::RustOption(_) => false,
             Type::Array(_) => true,
-            _ => !self.is_guaranteed_pod(ty),
+            _ => !self.is_guaranteed_pod(ty) || self.is_considered_improper_ctype(ty),
         }
     }
 

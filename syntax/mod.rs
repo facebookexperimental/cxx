@@ -19,6 +19,7 @@ mod names;
 pub(crate) mod namespace;
 mod parse;
 mod pod;
+pub(crate) mod primitive;
 pub(crate) mod qualified;
 pub(crate) mod report;
 pub(crate) mod resolve;
@@ -323,6 +324,7 @@ pub(crate) struct Array {
 #[derive(Copy, Clone, PartialEq)]
 pub(crate) enum Lang {
     Cxx,
+    CxxUnwind,
     Rust,
 }
 

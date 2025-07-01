@@ -65,6 +65,7 @@ pub(super) fn write(out: &mut OutFile) {
         include.array = true;
         include.cstdint = true;
         include.string = true;
+        include.string_view = true;
         builtin.friend_impl = true;
     }
 

@@ -7,7 +7,7 @@
     clippy::ptr_cast_constness,
     clippy::unseparated_literal_suffix,
     clippy::too_many_lines,
-    clippy::unit_cmp,
+    clippy::unit_cmp
 )]
 
 use cxx::{SharedPtr, UniquePtr};

@@ -1,9 +1,9 @@
-use core::ffi::c_char;
 use crate::rust_option::RustOption;
 #[cfg(feature = "alloc")]
 use crate::rust_string::RustString;
 #[cfg(feature = "alloc")]
 use crate::rust_vec::RustVec;
+use core::ffi::c_char;
 use core::mem;
 use core::ptr;
 
