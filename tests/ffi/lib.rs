@@ -26,8 +26,19 @@ use std::pin::Pin;
 
 #[cxx::bridge(namespace = "tests")]
 pub mod ffi {
-    #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+    extern "C++" {
+        include!("tests/ffi/tests.h");
+
+        type Undefined;
+        type Private;
+        type Unmovable;
+        type Array;
+    }
+
+    #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+    #[serde(deny_unknown_fields)]
     struct Shared {
+        #[serde(default)]
         z: usize,
     }
 
@@ -36,9 +47,10 @@ pub mod ffi {
         msg: String,
     }
 
-    #[derive(Debug, Hash, PartialOrd, Ord)]
+    #[derive(Debug, Hash, PartialOrd, Ord, Default, BitAnd, BitOr, BitXor)]
     enum Enum {
         AVal,
+        #[default]
         BVal = 2020,
         #[cxx_name = "CVal"]
         LastVal,
@@ -62,7 +74,7 @@ pub mod ffi {
     enum ABEnum {
         ABAVal,
         ABBVal = 2020,
-        ABCVal,
+        ABCVal = -2147483648i32,
     }
 
     #[namespace = "A::B"]
@@ -83,9 +95,14 @@ pub mod ffi {
         e: COwnedEnum,
     }
 
-    pub struct Array {
+    pub struct WithArray {
         a: [i32; 4],
         b: Buffer,
+    }
+
+    #[repr(align(4))]
+    pub struct OveralignedStruct {
+        b: [u8; 4],
     }
 
     #[derive(Copy, Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -94,8 +111,6 @@ pub mod ffi {
     }
 
     unsafe extern "C++" {
-        include!("tests/ffi/tests.h");
-
         type C;
 
         fn c_return_primitive() -> usize;
@@ -263,7 +278,9 @@ pub mod ffi {
         fn c_method_on_shared(self: &Shared) -> usize;
         fn c_method_ref_on_shared(self: &Shared) -> &usize;
         fn c_method_mut_on_shared(self: &mut Shared) -> &mut usize;
-        fn c_set_array(self: &mut Array, value: i32);
+        #[Self = "Shared"]
+        fn c_static_method_on_shared() -> usize;
+        fn c_set_array(self: &mut WithArray, value: i32);
 
         fn c_get_use_count(weak: &WeakPtr<C>) -> usize;
 
@@ -278,6 +295,16 @@ pub mod ffi {
 
         #[namespace = "other"]
         fn ns_c_take_ns_shared(shared: AShared);
+
+        #[Self = "C"]
+        fn c_static_method() -> usize;
+    }
+
+    struct ContainsOpaqueRust<'a> {
+        boxed: Box<OpaqueRust>,
+        vecked: Vec<OpaqueRust>,
+        referenced: &'a mut OpaqueRust,
+        sliced: &'a mut [OpaqueRust],
     }
 
     extern "C++" {
@@ -285,6 +312,7 @@ pub mod ffi {
 
         type COwnedEnum;
         type Job = crate::module::ffi::Job;
+        type OpaqueRust = crate::module::OpaqueRust;
     }
 
     extern "Rust" {
@@ -337,6 +365,10 @@ pub mod ffi {
         fn r_return_rust_vec() -> Vec<u8>;
         fn r_return_rust_vec_string() -> Vec<String>;
         fn r_return_rust_vec_extern_struct() -> Vec<Job>;
+        #[allow(clippy::vec_box)]
+        fn r_return_rust_vec_box() -> Vec<Box<R>>;
+        #[allow(clippy::vec_box)]
+        fn r_return_rust_vec_box_other_module_type() -> Vec<Box<OpaqueRust>>;
         fn r_return_ref_rust_vec(shared: &Shared) -> &Vec<u8>;
         fn r_return_mut_rust_vec(shared: &mut Shared) -> &mut Vec<u8>;
         fn r_return_rust_option_box() -> Option<Box<Shared>>;
@@ -436,10 +468,22 @@ pub mod ffi {
         fn get(self: &R) -> usize;
         fn set(self: &mut R, n: usize) -> usize;
         fn r_method_on_shared(self: &Shared) -> String;
-        fn r_get_array_sum(self: &Array) -> i32;
+        fn r_get_array_sum(self: &WithArray) -> i32;
+        // Ensure that a Rust method can be implemented on an opaque C++ type.
+        fn r_method_on_c_get_mut(self: Pin<&mut C>) -> &mut usize;
 
         #[cxx_name = "rAliasedFunction"]
         fn r_aliased_function(x: i32) -> String;
+
+        #[Self = "Shared"]
+        fn r_static_method_on_shared() -> usize;
+
+        #[Self = "R"]
+        fn r_static_method() -> usize;
+    }
+
+    unsafe extern "C++" {
+        fn c_member_function_on_rust_type(self: &R);
     }
 
     struct Dag0 {
@@ -465,6 +509,23 @@ pub mod ffi {
 
     impl Box<Shared> {}
     impl CxxVector<SharedString> {}
+    impl SharedPtr<Undefined> {}
+    impl SharedPtr<Private> {}
+    impl CxxVector<Unmovable> {}
+    impl UniquePtr<Array> {}
+}
+
+#[rustfmt::skip]
+#[cxx::bridge(namespace = "tests")]
+pub mod ffi_no_rustfmt {
+    // Rustfmt would replace `StructWithLifetime2<>` by `StructWithLifetime2`,
+    // but the test is meant to cover specifically the former spelling.
+    pub struct StructWithLifetime2<'a> {
+        s: &'a str,
+    }
+    extern "Rust" {
+        fn r_take_unique_ptr_of_struct_with_lifetime2(_: UniquePtr<StructWithLifetime2<>>);
+    }
 }
 
 mod other {
@@ -531,6 +592,10 @@ impl R {
         self.0 = n;
         n
     }
+
+    fn r_static_method() -> usize {
+        2024
+    }
 }
 
 pub struct Reference<'a>(pub &'a String);
@@ -539,11 +604,22 @@ impl ffi::Shared {
     fn r_method_on_shared(&self) -> String {
         "2020".to_owned()
     }
+
+    fn r_static_method_on_shared() -> usize {
+        2023
+    }
 }
 
-impl ffi::Array {
+impl ffi::WithArray {
     pub fn r_get_array_sum(&self) -> i32 {
         self.a.iter().sum()
+    }
+}
+
+// A Rust method implemented on an opaque C++ type.
+impl ffi::C {
+    pub fn r_method_on_c_get_mut(self: core::pin::Pin<&mut Self>) -> &mut usize {
+        self.getMut()
     }
 }
 
@@ -649,6 +725,16 @@ fn r_return_rust_vec_string() -> Vec<String> {
 
 fn r_return_rust_vec_extern_struct() -> Vec<ffi::Job> {
     Vec::new()
+}
+
+#[allow(clippy::vec_box)]
+fn r_return_rust_vec_box() -> Vec<Box<R>> {
+    vec![Box::new(R(2020))]
+}
+
+#[allow(clippy::vec_box)]
+fn r_return_rust_vec_box_other_module_type() -> Vec<Box<module::OpaqueRust>> {
+    vec![Box::new(module::OpaqueRust(2025))]
 }
 
 fn r_return_ref_rust_vec(shared: &ffi::Shared) -> &Vec<u8> {
@@ -880,6 +966,11 @@ fn r_take_rust_option_mut_ref_vec_string(o: Option<&mut Vec<String>>) {
 
 fn r_take_enum(e: ffi::Enum) {
     let _ = e;
+}
+
+fn r_take_unique_ptr_of_struct_with_lifetime2(
+    _: cxx::UniquePtr<ffi_no_rustfmt::StructWithLifetime2>,
+) {
 }
 
 fn r_try_return_void() -> Result<(), Error> {

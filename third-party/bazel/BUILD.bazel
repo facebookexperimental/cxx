@@ -32,121 +32,133 @@ filegroup(
 
 # Workspace Member Dependencies
 alias(
-    name = "cc-1.2.27",
-    actual = "@vendor__cc-1.2.27//:cc",
+    name = "cc-1.2.53",
+    actual = "@vendor__cc-1.2.53//:cc",
     tags = ["manual"],
 )
 
 alias(
     name = "cc",
-    actual = "@vendor__cc-1.2.27//:cc",
+    actual = "@vendor__cc-1.2.53//:cc",
     tags = ["manual"],
 )
 
 alias(
-    name = "clap-4.5.40",
-    actual = "@vendor__clap-4.5.40//:clap",
+    name = "clap-4.5.54",
+    actual = "@vendor__clap-4.5.54//:clap",
     tags = ["manual"],
 )
 
 alias(
     name = "clap",
-    actual = "@vendor__clap-4.5.40//:clap",
+    actual = "@vendor__clap-4.5.54//:clap",
     tags = ["manual"],
 )
 
 alias(
-    name = "codespan-reporting-0.12.0",
-    actual = "@vendor__codespan-reporting-0.12.0//:codespan_reporting",
+    name = "codespan-reporting-0.13.1",
+    actual = "@vendor__codespan-reporting-0.13.1//:codespan_reporting",
     tags = ["manual"],
 )
 
 alias(
     name = "codespan-reporting",
-    actual = "@vendor__codespan-reporting-0.12.0//:codespan_reporting",
+    actual = "@vendor__codespan-reporting-0.13.1//:codespan_reporting",
     tags = ["manual"],
 )
 
 alias(
-    name = "foldhash-0.1.5",
-    actual = "@vendor__foldhash-0.1.5//:foldhash",
+    name = "foldhash-0.2.0",
+    actual = "@vendor__foldhash-0.2.0//:foldhash",
     tags = ["manual"],
 )
 
 alias(
     name = "foldhash",
-    actual = "@vendor__foldhash-0.1.5//:foldhash",
+    actual = "@vendor__foldhash-0.2.0//:foldhash",
     tags = ["manual"],
 )
 
 alias(
-    name = "indexmap-2.10.0",
-    actual = "@vendor__indexmap-2.10.0//:indexmap",
+    name = "indexmap-2.13.0",
+    actual = "@vendor__indexmap-2.13.0//:indexmap",
     tags = ["manual"],
 )
 
 alias(
     name = "indexmap",
-    actual = "@vendor__indexmap-2.10.0//:indexmap",
+    actual = "@vendor__indexmap-2.13.0//:indexmap",
     tags = ["manual"],
 )
 
 alias(
-    name = "proc-macro2-1.0.95",
-    actual = "@vendor__proc-macro2-1.0.95//:proc_macro2",
+    name = "proc-macro2-1.0.105",
+    actual = "@vendor__proc-macro2-1.0.105//:proc_macro2",
     tags = ["manual"],
 )
 
 alias(
     name = "proc-macro2",
-    actual = "@vendor__proc-macro2-1.0.95//:proc_macro2",
+    actual = "@vendor__proc-macro2-1.0.105//:proc_macro2",
     tags = ["manual"],
 )
 
 alias(
-    name = "quote-1.0.40",
-    actual = "@vendor__quote-1.0.40//:quote",
+    name = "quote-1.0.43",
+    actual = "@vendor__quote-1.0.43//:quote",
     tags = ["manual"],
 )
 
 alias(
     name = "quote",
-    actual = "@vendor__quote-1.0.40//:quote",
+    actual = "@vendor__quote-1.0.43//:quote",
     tags = ["manual"],
 )
 
 alias(
-    name = "rustversion-1.0.21",
-    actual = "@vendor__rustversion-1.0.21//:rustversion",
+    name = "rustversion-1.0.22",
+    actual = "@vendor__rustversion-1.0.22//:rustversion",
     tags = ["manual"],
 )
 
 alias(
     name = "rustversion",
-    actual = "@vendor__rustversion-1.0.21//:rustversion",
+    actual = "@vendor__rustversion-1.0.22//:rustversion",
     tags = ["manual"],
 )
 
 alias(
-    name = "scratch-1.0.8",
-    actual = "@vendor__scratch-1.0.8//:scratch",
+    name = "scratch-1.0.9",
+    actual = "@vendor__scratch-1.0.9//:scratch",
     tags = ["manual"],
 )
 
 alias(
     name = "scratch",
-    actual = "@vendor__scratch-1.0.8//:scratch",
+    actual = "@vendor__scratch-1.0.9//:scratch",
     tags = ["manual"],
 )
 
 alias(
-    name = "syn-2.0.104",
-    actual = "@vendor__syn-2.0.104//:syn",
+    name = "serde-1.0.228",
+    actual = "@vendor__serde-1.0.228//:serde",
+    tags = ["manual"],
+)
+
+alias(
+    name = "serde",
+    actual = "@vendor__serde-1.0.228//:serde",
+    tags = ["manual"],
+)
+
+alias(
+    name = "syn-2.0.114",
+    actual = "@vendor__syn-2.0.114//:syn",
     tags = ["manual"],
 )
 
 alias(
     name = "syn",
-    actual = "@vendor__syn-2.0.104//:syn",
+    actual = "@vendor__syn-2.0.114//:syn",
     tags = ["manual"],
 )

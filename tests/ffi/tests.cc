@@ -13,11 +13,17 @@
 #include <string>
 #include <tuple>
 
+#ifdef __GNUC__
+#pragma GCC diagnostic ignored "-Wshadow"
+#endif
+
 extern "C" void cxx_test_suite_set_correct() noexcept;
 extern "C" tests::R *cxx_test_suite_get_box() noexcept;
 extern "C" bool cxx_test_suite_r_is_correct(const tests::R *) noexcept;
 
 namespace tests {
+
+static_assert(4 == alignof(OveralignedStruct), "expected 4 byte alignment");
 
 static constexpr char SLICE_DATA[] = "2020";
 
@@ -48,7 +54,9 @@ const size_t &Shared::c_method_ref_on_shared() const noexcept {
 
 size_t &Shared::c_method_mut_on_shared() noexcept { return this->z; }
 
-void Array::c_set_array(int32_t val) noexcept {
+size_t Shared::c_static_method_on_shared() noexcept { return 2025; }
+
+void WithArray::c_set_array(int32_t val) noexcept {
   this->a = {val, val, val, val};
 }
 
@@ -942,6 +950,14 @@ extern "C" std::string *cxx_test_suite_get_unique_ptr_string() noexcept {
   return std::unique_ptr<std::string>(new std::string("2020")).release();
 }
 
+const std::vector<uint8_t> &C::c_lifetime_elision_member_fn() const {
+  return this->get_v();
+}
+
+const std::vector<uint8_t> &c_lifetime_elision_fn(const C &c) {
+  return c.get_v();
+}
+
 rust::String C::cOverloadedMethod(int32_t x) const {
   return rust::String(std::to_string(x));
 }
@@ -957,6 +973,8 @@ rust::String cOverloadedFunction(int x) {
 rust::String cOverloadedFunction(rust::Str x) {
   return rust::String(std::string(x));
 }
+
+size_t C::c_static_method() { return 2026; }
 
 void c_take_trivial_ptr(std::unique_ptr<D> d) {
   if (d->d == 30) {
@@ -1088,6 +1106,8 @@ std::unique_ptr<::F::F> c_return_ns_opaque_ptr() {
   return f;
 }
 
+void R::c_member_function_on_rust_type() const noexcept {}
+
 extern "C" const char *cxx_run_test() noexcept {
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
@@ -1117,6 +1137,10 @@ extern "C" const char *cxx_run_test() noexcept {
   ASSERT(r_return_enum(0) == Enum::AVal);
   ASSERT(r_return_enum(1) == Enum::BVal);
   ASSERT(r_return_enum(2021) == Enum::CVal);
+  ASSERT(Shared::r_static_method_on_shared() == 2023);
+  ASSERT(R::r_static_method() == 2024);
+  ASSERT(r_return_rust_vec_box()[0]->get() == 2020);
+  ASSERT(r_return_rust_vec_box_other_module_type().size() == 1);
 
   r_take_primitive(2020);
   r_take_shared(Shared{2020});

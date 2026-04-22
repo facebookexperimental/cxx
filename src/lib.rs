@@ -18,7 +18,7 @@
 //!
 //! <br>
 //!
-//! *Compiler support: requires rustc 1.73+ and c++11 or newer*<br>
+//! *Compiler support: requires rustc 1.85+ and c++11 or newer*<br>
 //! *[Release notes](https://github.com/dtolnay/cxx/releases)*
 //!
 //! <br>
@@ -254,7 +254,6 @@
 //!         .std("c++11")
 //!         .compile("cxxbridge-demo");
 //!
-//!     println!("cargo:rerun-if-changed=src/main.rs");
 //!     println!("cargo:rerun-if-changed=src/demo.cc");
 //!     println!("cargo:rerun-if-changed=include/demo.h");
 //! }
@@ -364,7 +363,7 @@
 //! </table>
 
 #![no_std]
-#![doc(html_root_url = "https://docs.rs/cxx/1.0.160")]
+#![doc(html_root_url = "https://docs.rs/cxx/1.0.194")]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![deny(
     improper_ctypes,
@@ -377,7 +376,7 @@
     clippy::std_instead_of_alloc,
     clippy::std_instead_of_core
 )]
-#![allow(non_camel_case_types)]
+#![expect(non_camel_case_types)]
 #![allow(
     clippy::cast_possible_truncation,
     clippy::doc_markdown,
@@ -389,10 +388,8 @@
     clippy::must_use_candidate,
     clippy::needless_doctest_main,
     clippy::needless_lifetimes,
+    clippy::needless_pass_by_value,
     clippy::new_without_default,
-    clippy::ptr_as_ptr,
-    clippy::ptr_cast_constness,
-    clippy::ref_as_ptr,
     clippy::uninlined_format_args
 )]
 #![allow(unknown_lints, mismatched_lifetime_syntaxes)]
@@ -494,7 +491,6 @@ pub type Vector<T> = CxxVector<T>;
 // Not public API.
 #[doc(hidden)]
 pub mod private {
-    pub use crate::cxx_vector::VectorElement;
     pub use crate::extern_type::{verify_extern_kind, verify_extern_type};
     pub use crate::function::FatFunction;
     pub use crate::hash::hash;
@@ -507,16 +503,14 @@ pub mod private {
     pub use crate::rust_str::RustStr;
     #[cfg(feature = "alloc")]
     pub use crate::rust_string::RustString;
-    pub use crate::rust_type::ImplOption;
-    pub use crate::rust_type::{ImplBox, ImplVec, RustType};
+    pub use crate::rust_type::{
+        require_box, require_unpin, require_vec, with, ImplBox, ImplOption, ImplVec, RustType,
+        Without,
+    };
     #[cfg(feature = "alloc")]
     pub use crate::rust_vec::RustVec;
-    pub use crate::shared_ptr::SharedPtrTarget;
     pub use crate::string::StackString;
-    pub use crate::unique_ptr::UniquePtrTarget;
     pub use crate::unwind::prevent_unwind;
-    pub use crate::weak_ptr::WeakPtrTarget;
-    pub use core::{concat, module_path};
     pub use cxxbridge_macro::type_id;
 }
 
@@ -541,4 +535,4 @@ chars! {
 }
 
 #[repr(transparent)]
-struct void(#[allow(dead_code)] core::ffi::c_void);
+struct void(core::ffi::c_void);
