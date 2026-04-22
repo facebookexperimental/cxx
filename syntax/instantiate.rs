@@ -9,10 +9,20 @@ use std::hash::{Hash, Hasher};
 pub(crate) enum ImplKey<'a> {
     RustBox(NamedImplKey<'a>),
     RustVec(NamedImplKey<'a>),
+    RustOption(OptionInner<'a>),
     UniquePtr(NamedImplKey<'a>),
     SharedPtr(NamedImplKey<'a>),
     WeakPtr(NamedImplKey<'a>),
     CxxVector(NamedImplKey<'a>),
+}
+
+#[derive(PartialEq, Eq, Hash)]
+pub(crate) enum OptionInner<'a> {
+    RustBox(NamedImplKey<'a>),
+    Ref(NamedImplKey<'a>),
+    MutRef(NamedImplKey<'a>),
+    RefVec(NamedImplKey<'a>),
+    MutRefVec(NamedImplKey<'a>),
 }
 
 impl<'a> ImplKey<'a> {
@@ -26,8 +36,10 @@ impl<'a> ImplKey<'a> {
     /// traits defined by the `cxx` crate for some local type or for a
     /// fundamental type like `Box<LocalType>`.
     pub(crate) fn is_implicit_impl_ok(&self, types: &Types) -> bool {
-        // TODO: relax this for Rust generics to allow Vec<Vec<T>> etc.
-        types.is_local(self.inner())
+        match self {
+            ImplKey::RustOption(_) => true,
+            _ => types.is_local(self.inner()),
+        }
     }
 
     /// Returns the type argument in the generic instantiation described by
@@ -41,6 +53,13 @@ impl<'a> ImplKey<'a> {
             | ImplKey::SharedPtr(key)
             | ImplKey::WeakPtr(key)
             | ImplKey::CxxVector(key) => key,
+            ImplKey::RustOption(option_inner) => match option_inner {
+                OptionInner::RustBox(key)
+                | OptionInner::Ref(key)
+                | OptionInner::MutRef(key)
+                | OptionInner::RefVec(key)
+                | OptionInner::MutRefVec(key) => key,
+            },
         };
         named_impl_key.inner
     }
@@ -65,6 +84,43 @@ impl Type {
         match self {
             Type::RustBox(ty) => Some(ImplKey::RustBox(NamedImplKey::new(self, ty, res)?)),
             Type::RustVec(ty) => Some(ImplKey::RustVec(NamedImplKey::new(self, ty, res)?)),
+            Type::RustOption(ty) => match &ty.inner {
+                Type::RustBox(_) => {
+                    let impl_key = ty.inner.impl_key(res)?;
+                    match impl_key {
+                        ImplKey::RustBox(named) => {
+                            Some(ImplKey::RustOption(OptionInner::RustBox(named)))
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+                Type::Ref(r) => match &r.inner {
+                    Type::RustVec(_) => {
+                        if let Some(ImplKey::RustVec(impl_key)) = r.inner.impl_key(res) {
+                            if r.mutable {
+                                Some(ImplKey::RustOption(OptionInner::MutRefVec(impl_key)))
+                            } else {
+                                Some(ImplKey::RustOption(OptionInner::RefVec(impl_key)))
+                            }
+                        } else {
+                            None
+                        }
+                    }
+                    Type::Ident(_) => {
+                        if r.mutable {
+                            Some(ImplKey::RustOption(OptionInner::MutRef(
+                                NamedImplKey::new(self, ty, res)?,
+                            )))
+                        } else {
+                            Some(ImplKey::RustOption(OptionInner::Ref(
+                                NamedImplKey::new(self, ty, res)?,
+                            )))
+                        }
+                    }
+                    _ => None,
+                },
+                _ => None,
+            },
             Type::UniquePtr(ty) => Some(ImplKey::UniquePtr(NamedImplKey::new(self, ty, res)?)),
             Type::SharedPtr(ty) => Some(ImplKey::SharedPtr(NamedImplKey::new(self, ty, res)?)),
             Type::WeakPtr(ty) => Some(ImplKey::WeakPtr(NamedImplKey::new(self, ty, res)?)),

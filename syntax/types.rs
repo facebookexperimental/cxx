@@ -308,7 +308,8 @@ impl<'a> Types<'a> {
             | TypeQuery::Ptr(_)
             | TypeQuery::Str
             | TypeQuery::Fn
-            | TypeQuery::SliceRef => false,
+            | TypeQuery::SliceRef
+            | TypeQuery::RustOption => false,
             TypeQuery::Array(_) => true,
             _ => !self.is_guaranteed_pod(ty) || self.is_considered_improper_ctype(ty),
         }

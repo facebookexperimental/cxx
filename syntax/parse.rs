@@ -1292,6 +1292,16 @@ fn parse_type_path(ty: &TypePath) -> Result<Type> {
                             rangle: generic.gt_token,
                         })));
                     }
+                } else if ident == "Option" && generic.args.len() == 1 {
+                    if let GenericArgument::Type(arg) = &generic.args[0] {
+                        let inner = parse_type(arg)?;
+                        return Ok(Type::RustOption(Box::new(Ty1 {
+                            name: ident,
+                            langle: generic.lt_token,
+                            inner,
+                            rangle: generic.gt_token,
+                        })));
+                    }
                 } else if ident == "Pin" && generic.args.len() == 1 {
                     if let GenericArgument::Type(arg) = &generic.args[0] {
                         let inner = parse_type(arg)?;
