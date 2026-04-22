@@ -10,12 +10,13 @@ use crate::syntax::map::UnorderedMap as Map;
 use crate::syntax::namespace::Namespace;
 use crate::syntax::primitive::{self, PrimitiveKind};
 use crate::syntax::set::UnorderedSet;
-use crate::syntax::symbol::Symbol;
+use crate::syntax::symbol::{self, Symbol};
 use crate::syntax::trivial::{self, TrivialReason};
 use crate::syntax::{
     derive, mangle, Api, Doc, Enum, ExternFn, ExternType, FnKind, Lang, Pair, Signature, Struct,
     Trait, Type, TypeAlias, Types, Var,
 };
+use proc_macro2::Ident;
 
 pub(super) fn gen(apis: &[Api], types: &Types, opt: &Opt, header: bool) -> Vec<u8> {
     let mut out_file = OutFile::new(header, opt, types);
@@ -901,7 +902,7 @@ fn write_cxx_function_shim<'a>(out: &mut OutFile<'a>, efn: &'a ExternFn) {
     }
     writeln!(out, " {{");
     write!(out, "  ");
-    write_return_type(out, &efn.ret);
+    write_return_type(out, efn.ret.as_ref());
     match efn.receiver() {
         None => write!(out, "(*{}$)(", efn.name.rust),
         Some(receiver) => write!(
@@ -1410,7 +1411,7 @@ fn write_extern_return_type_space(out: &mut OutFile, sig: &Signature, lang: Lang
             out.builtin.repr_fat = true;
             write!(out, "::rust::repr::Fat ");
         }
-        ty => write_return_type(out, ty),
+        ty => write_return_type(out, ty.as_ref()),
     }
 }
 
@@ -1470,7 +1471,7 @@ fn write_type_to_generic_writer(out: &mut impl InfallibleWrite, ty: &Type, types
         }
         Type::RustOption(ty) => {
             write!(out, "::rust::Option<");
-            write_type(out, &ty.inner);
+            write_type_to_generic_writer(out, &ty.inner, types);
             write!(out, ">");
         }
         Type::UniquePtr(ptr) => {
@@ -1591,12 +1592,6 @@ fn write_space_after_type(out: &mut impl InfallibleWrite, ty: &Type) {
     }
 }
 
-#[derive(Copy, Clone)]
-enum UniquePtr<'a> {
-    Ident(&'a Ident),
-    CxxVector(&'a Ident),
-}
-
 enum RustOption<'a> {
     RustBox(&'a Ident),
     Ref(&'a Ident),
@@ -1612,17 +1607,6 @@ trait ToTypename {
 impl ToTypename for Ident {
     fn to_typename(&self, types: &Types) -> String {
         types.resolve(self).name.to_fully_qualified()
-    }
-}
-
-impl<'a> ToTypename for UniquePtr<'a> {
-    fn to_typename(&self, types: &Types) -> String {
-        match self {
-            UniquePtr::Ident(ident) => ident.to_typename(types),
-            UniquePtr::CxxVector(element) => {
-                format!("::std::vector<{}>", element.to_typename(types))
-            }
-        }
     }
 }
 
@@ -1652,17 +1636,6 @@ trait ToMangled {
 impl ToMangled for Ident {
     fn to_mangled(&self, types: &Types) -> Symbol {
         types.resolve(self).name.to_symbol()
-    }
-}
-
-impl<'a> ToMangled for UniquePtr<'a> {
-    fn to_mangled(&self, types: &Types) -> Symbol {
-        match self {
-            UniquePtr::Ident(ident) => ident.to_mangled(types),
-            UniquePtr::CxxVector(element) => {
-                symbol::join(&[&"std", &"vector", &element.to_mangled(types)])
-            }
-        }
     }
 }
 
@@ -1792,47 +1765,47 @@ fn write_rust_option_extern(out: &mut OutFile, inner: &OptionInner) {
     out.include.cstddef = true;
     let (element, is_const, value_type) = match inner {
         OptionInner::RustBox(key) => {
-            let element = RustOption::RustBox(key.rust);
+            let element = RustOption::RustBox(key.rust());
             let value_type = element.to_typename(out.types);
             (element, false, value_type)
         }
         OptionInner::Ref(key) => {
-            if out.types.try_resolve(key.rust).is_none() {
+            if out.types.try_resolve(key.rust()).is_none() {
                 return;
             }
-            let resolve = out.types.resolve(key);
+            let resolve = out.types.resolve(key.rust());
             let value_type = resolve.name.to_fully_qualified();
-            (RustOption::Ref(key.rust), true, value_type)
+            (RustOption::Ref(key.rust()), true, value_type)
         }
         OptionInner::MutRef(key) => {
-            if out.types.try_resolve(key.rust).is_none() {
+            if out.types.try_resolve(key.rust()).is_none() {
                 return;
             }
-            let resolve = out.types.resolve(key);
+            let resolve = out.types.resolve(key.rust());
             let value_type = resolve.name.to_fully_qualified();
-            (RustOption::MutRef(key.rust), false, value_type)
+            (RustOption::MutRef(key.rust()), false, value_type)
         }
         OptionInner::RefVec(key) => {
-            if out.types.try_resolve(key.rust).is_none() {
+            if out.types.try_resolve(key.rust()).is_none() {
                 return;
             }
-            let resolve = out.types.resolve(key);
+            let resolve = out.types.resolve(key.rust());
             let value_type = format!(
                 "::rust::cxxbridge1::Vec<{}>",
                 resolve.name.to_fully_qualified()
             );
-            (RustOption::RefVec(key.rust), true, value_type)
+            (RustOption::RefVec(key.rust()), true, value_type)
         }
         OptionInner::MutRefVec(key) => {
-            if out.types.try_resolve(key.rust).is_none() {
+            if out.types.try_resolve(key.rust()).is_none() {
                 return;
             }
-            let resolve = out.types.resolve(key);
+            let resolve = out.types.resolve(key.rust());
             let value_type = format!(
                 "::rust::cxxbridge1::Vec<{}>",
                 resolve.name.to_fully_qualified()
             );
-            (RustOption::MutRefVec(key.rust), false, value_type)
+            (RustOption::MutRefVec(key.rust()), false, value_type)
         }
     };
     let inner = element.to_typename(out.types);
@@ -2006,30 +1979,30 @@ fn write_rust_vec_impl(out: &mut OutFile, key: &NamedImplKey) {
 
 fn write_rust_option_impl(out: &mut OutFile, inner: &OptionInner) {
     let (element, is_const, value_needs_ref) = match inner {
-        OptionInner::RustBox(key) => (RustOption::RustBox(key.rust), false, true),
+        OptionInner::RustBox(key) => (RustOption::RustBox(key.rust()), false, true),
         OptionInner::Ref(key) => {
-            if out.types.try_resolve(key.rust).is_none() {
+            if out.types.try_resolve(key.rust()).is_none() {
                 return;
             }
-            (RustOption::Ref(key.rust), true, false)
+            (RustOption::Ref(key.rust()), true, false)
         }
         OptionInner::MutRef(key) => {
-            if out.types.try_resolve(key.rust).is_none() {
+            if out.types.try_resolve(key.rust()).is_none() {
                 return;
             }
-            (RustOption::MutRef(key.rust), false, false)
+            (RustOption::MutRef(key.rust()), false, false)
         }
         OptionInner::RefVec(key) => {
-            if out.types.try_resolve(key.rust).is_none() {
+            if out.types.try_resolve(key.rust()).is_none() {
                 return;
             }
-            (RustOption::RefVec(key.rust), true, false)
+            (RustOption::RefVec(key.rust()), true, false)
         }
         OptionInner::MutRefVec(key) => {
-            if out.types.try_resolve(key.rust).is_none() {
+            if out.types.try_resolve(key.rust()).is_none() {
                 return;
             }
-            (RustOption::MutRefVec(key.rust), false, false)
+            (RustOption::MutRefVec(key.rust()), false, false)
         }
     };
     let inner = element.to_typename(out.types);

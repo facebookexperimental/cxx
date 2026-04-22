@@ -76,12 +76,12 @@ impl<T: OptionTarget> RustOption<T> {
 
     pub fn as_option(&self) -> &Option<T> {
         let _: () = assert_option_safe::<T>();
-        unsafe { &*(self as *const RustOption<T> as *const Option<T>) }
+        unsafe { &*core::ptr::from_ref(self).cast::<Option<T>>() }
     }
 
     pub fn as_mut_option(&mut self) -> &mut Option<T> {
         let _: () = assert_option_safe::<T>();
-        unsafe { &mut *(self as *mut RustOption<T> as *mut Option<T>) }
+        unsafe { &mut *core::ptr::from_mut(self).cast::<Option<T>>() }
     }
 
     pub fn from(o: Option<T>) -> Self {
@@ -93,12 +93,12 @@ impl<T: OptionTarget> RustOption<T> {
 
     pub fn from_ref(o: &Option<T>) -> &Self {
         let _: () = assert_option_safe::<T>();
-        unsafe { &*(o as *const Option<T> as *const RustOption<T>) }
+        unsafe { &*core::ptr::from_ref(o).cast::<RustOption<T>>() }
     }
 
     pub fn from_mut(o: &mut Option<T>) -> &mut Self {
         let _: () = assert_option_safe::<T>();
-        unsafe { &mut *(o as *mut Option<T> as *mut RustOption<T>) }
+        unsafe { &mut *core::ptr::from_mut(o).cast::<RustOption<T>>() }
     }
 
     pub fn value(&self) -> Option<&T> {
@@ -121,12 +121,12 @@ impl<T: OptionTarget> RustOption<T> {
 impl<'a, T> RustOption<&'a T> {
     pub fn into_raw(self) -> *const T {
         self.into_option()
-            .map_or(core::ptr::null(), |v| v as *const T)
+            .map_or(core::ptr::null(), core::ptr::from_ref)
     }
 
     pub fn into_raw_improper(self) -> *const core::ffi::c_void {
         self.into_option().map_or(core::ptr::null(), |v| {
-            v as *const T as *const core::ffi::c_void
+            core::ptr::from_ref(v).cast::<core::ffi::c_void>()
         })
     }
 
@@ -142,7 +142,7 @@ impl<'a, T> RustOption<&'a T> {
     /// SAFETY: ptr must be valid for 'a, and castable to *const T
     pub unsafe fn from_raw_improper(ptr: *const core::ffi::c_void) -> Self {
         let mut this = RustOption::new();
-        let ptr = ptr as *const T;
+        let ptr = ptr.cast::<T>();
         if let Some(r) = unsafe { ptr.as_ref() } {
             this.set(r);
         }
@@ -153,12 +153,12 @@ impl<'a, T> RustOption<&'a T> {
 impl<'a, T> RustOption<&'a mut T> {
     pub fn into_raw(self) -> *mut T {
         self.into_option()
-            .map_or(core::ptr::null_mut(), |v| v as *mut T)
+            .map_or(core::ptr::null_mut(), core::ptr::from_mut)
     }
 
     pub fn into_raw_improper(self) -> *mut core::ffi::c_void {
         self.into_option().map_or(core::ptr::null_mut(), |v| {
-            v as *mut T as *mut core::ffi::c_void
+            core::ptr::from_mut(v).cast::<core::ffi::c_void>()
         })
     }
 
@@ -174,7 +174,7 @@ impl<'a, T> RustOption<&'a mut T> {
     /// SAFETY: ptr must be valid for 'a, and castable to *mut T
     pub unsafe fn from_raw_improper(ptr: *mut core::ffi::c_void) -> Self {
         let mut this = RustOption::new();
-        let ptr = ptr as *mut T;
+        let ptr = ptr.cast::<T>();
         if let Some(r) = unsafe { ptr.as_mut() } {
             this.set(r);
         }
@@ -186,14 +186,14 @@ impl<'a, T> RustOption<Pin<&'a mut T>> {
     pub fn into_raw(self) -> *mut T {
         self.into_option()
             .map_or(core::ptr::null_mut(), |v| unsafe {
-                v.get_unchecked_mut() as *mut T
+                core::ptr::from_mut(v.get_unchecked_mut())
             })
     }
 
     pub fn into_raw_improper(self) -> *mut core::ffi::c_void {
         self.into_option()
             .map_or(core::ptr::null_mut(), |v| unsafe {
-                v.get_unchecked_mut() as *mut T as *mut core::ffi::c_void
+                core::ptr::from_mut(v.get_unchecked_mut()).cast::<core::ffi::c_void>()
             })
     }
 
@@ -209,7 +209,7 @@ impl<'a, T> RustOption<Pin<&'a mut T>> {
     /// SAFETY: ptr must be valid for 'a, and castable to *mut T
     pub unsafe fn from_raw_improper(ptr: *mut core::ffi::c_void) -> Self {
         let mut this = RustOption::new();
-        let ptr = ptr as *mut T;
+        let ptr = ptr.cast::<T>();
         if let Some(r) = unsafe { ptr.as_mut() } {
             this.set(unsafe { Pin::new_unchecked(r) });
         }
@@ -226,7 +226,7 @@ impl<T> RustOption<Box<T>> {
 
     pub fn into_raw_improper(self) -> *mut core::ffi::c_void {
         self.into_option().map_or(core::ptr::null_mut(), |v| {
-            Box::into_raw(v) as *mut core::ffi::c_void
+            Box::into_raw(v).cast::<core::ffi::c_void>()
         })
     }
 
@@ -243,7 +243,7 @@ impl<T> RustOption<Box<T>> {
     pub unsafe fn from_raw_improper(ptr: *mut core::ffi::c_void) -> Self {
         let mut this = RustOption::new();
         if !ptr.is_null() {
-            this.set(unsafe { Box::from_raw(ptr as *mut T) });
+            this.set(unsafe { Box::from_raw(ptr.cast::<T>()) });
         }
         this
     }
@@ -265,12 +265,12 @@ impl<'a, T> RustOption<&'a RustVec<T>> {
     }
 
     pub fn as_option_vec_ref(&self) -> &Option<&'a Vec<T>> {
-        unsafe { &*(self as *const RustOption<&RustVec<T>> as *const RustOption<&Vec<T>>) }
+        unsafe { &*core::ptr::from_ref(self).cast::<RustOption<&Vec<T>>>() }
             .as_option()
     }
 
     pub fn as_option_vec_ref_mut(&mut self) -> &mut Option<&'a Vec<T>> {
-        unsafe { &mut *(self as *mut RustOption<&RustVec<T>> as *mut RustOption<&Vec<T>>) }
+        unsafe { &mut *core::ptr::from_mut(self).cast::<RustOption<&Vec<T>>>() }
             .as_mut_option()
     }
 }
@@ -294,14 +294,14 @@ impl<'a, T> RustOption<&'a mut RustVec<T>> {
 
     pub fn as_option_vec_mut(&self) -> &Option<&'a mut Vec<T>> {
         unsafe {
-            &*(self as *const RustOption<&'a mut RustVec<T>> as *const RustOption<&'a mut Vec<T>>)
+            &*core::ptr::from_ref(self).cast::<RustOption<&'a mut Vec<T>>>()
         }
         .as_option()
     }
 
     pub fn as_option_vec_mut_mut(&mut self) -> &mut Option<&'a mut Vec<T>> {
         unsafe {
-            &mut *(self as *mut RustOption<&'a mut RustVec<T>> as *mut RustOption<&'a mut Vec<T>>)
+            &mut *core::ptr::from_mut(self).cast::<RustOption<&'a mut Vec<T>>>()
         }
         .as_mut_option()
     }
@@ -326,7 +326,7 @@ impl<'a> RustOption<&'a RustVec<RustString>> {
 
     pub fn as_option_vec_string_ref_mut(&mut self) -> &mut Option<&'a Vec<String>> {
         unsafe {
-            &mut *(self as *mut RustOption<&RustVec<RustString>> as *mut RustOption<&Vec<String>>)
+            &mut *core::ptr::from_mut(self).cast::<RustOption<&Vec<String>>>()
         }
         .as_mut_option()
     }
@@ -348,8 +348,8 @@ impl<'a> RustOption<&'a mut RustVec<RustString>> {
 
     pub fn as_option_vec_string_mut_mut(&mut self) -> &mut Option<&'a mut Vec<String>> {
         unsafe {
-            (*(self as *mut RustOption<&mut RustVec<RustString>>
-                as *mut RustOption<&mut Vec<alloc::string::String>>))
+            (*core::ptr::from_mut(self)
+                .cast::<RustOption<&mut Vec<alloc::string::String>>>())
                 .as_mut_option()
         }
     }
@@ -371,7 +371,7 @@ impl<'a> RustOption<&'a RustString> {
     }
 
     pub fn as_option_string_ref_mut(&mut self) -> &mut Option<&'a String> {
-        unsafe { &mut *(self as *mut RustOption<&RustString> as *mut RustOption<&String>) }
+        unsafe { &mut *core::ptr::from_mut(self).cast::<RustOption<&String>>() }
             .as_mut_option()
     }
 }
@@ -395,8 +395,7 @@ impl<'a> RustOption<&'a mut RustString> {
 
     pub fn as_option_string_mut_mut(&mut self) -> &mut Option<&'a mut String> {
         unsafe {
-            (*(self as *mut RustOption<&mut RustString> as *mut RustOption<&mut String>))
-                .as_mut_option()
+            (*core::ptr::from_mut(self).cast::<RustOption<&mut String>>()).as_mut_option()
         }
     }
 }

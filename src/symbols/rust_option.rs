@@ -31,7 +31,7 @@ macro_rules! rust_option_shims {
             }
             #[export_name = concat!("cxxbridge1$rust_option$const$", $segment, "$value")]
             unsafe extern "C" fn __const_value(this: *const RustOption<&$ty>) -> *const $ty {
-                unsafe { this.as_ref().unwrap().as_option().as_ref().copied().unwrap() as *const $ty }
+                unsafe { core::ptr::from_ref(this.as_ref().unwrap().as_option().as_ref().copied().unwrap()) }
             }
             #[export_name = concat!("cxxbridge1$rust_option$const$", $segment, "$set")]
             unsafe extern "C" fn __const_set(
@@ -56,13 +56,13 @@ macro_rules! rust_option_shims {
             #[export_name = concat!("cxxbridge1$rust_option$", $segment, "$value_const")]
             unsafe extern "C" fn __value_const(this: *const RustOption<&mut $ty>) -> *const $ty {
                 let v: &$ty = unsafe { this.as_ref().unwrap().as_option().as_ref().unwrap() };
-                v as *const $ty
+                core::ptr::from_ref(v)
             }
             #[export_name = concat!("cxxbridge1$rust_option$", $segment, "$value")]
             unsafe extern "C" fn __value(this: *mut RustOption<&mut $ty>) -> *mut $ty {
                 let this = unsafe { this.as_mut().unwrap() };
                 let ptr = this.as_mut_option().as_mut().unwrap();
-                *ptr as _
+                core::ptr::from_mut(*ptr)
             }
             #[export_name = concat!("cxxbridge1$rust_option$", $segment, "$set")]
             unsafe extern "C" fn __set(
@@ -90,7 +90,7 @@ macro_rules! rust_option_shims {
             }
             #[export_name = concat!("cxxbridge1$rust_option$const$rust_vec$", $segment, "$value")]
             unsafe extern "C" fn __const_value(this: *const RustOption<&RustVec<$ty>>) -> *const RustVec<$ty> {
-                unsafe { this.as_ref().unwrap().as_option().as_ref().copied().unwrap() as *const RustVec<$ty> }
+                unsafe { core::ptr::from_ref(this.as_ref().unwrap().as_option().as_ref().copied().unwrap()) }
             }
             #[export_name = concat!("cxxbridge1$rust_option$const$rust_vec$", $segment, "$set")]
             unsafe extern "C" fn __const_set(
@@ -114,13 +114,13 @@ macro_rules! rust_option_shims {
             }
             #[export_name = concat!("cxxbridge1$rust_option$rust_vec$", $segment, "$value_const")]
             unsafe extern "C" fn __value_const(this: *const RustOption<&mut RustVec<$ty>>) -> *const RustVec<$ty> {
-                let v: &alloc::vec::Vec<_> = unsafe { this.as_ref().unwrap().as_option_vec_mut().as_ref().unwrap() };
-                v as *const alloc::vec::Vec<$ty> as *const RustVec<$ty>
+                let v: &alloc::vec::Vec<$ty> = unsafe { this.as_ref().unwrap().as_option_vec_mut().as_ref().unwrap() };
+                core::ptr::from_ref(v).cast::<RustVec<$ty>>()
             }
             #[export_name = concat!("cxxbridge1$rust_option$rust_vec$", $segment, "$value")]
             unsafe extern "C" fn __value(this: *mut RustOption<&mut RustVec<$ty>>) -> *mut RustVec<$ty> {
                 let ptr = unsafe { this.as_mut().unwrap().as_option_vec_mut_mut().as_mut().unwrap() };
-                *ptr as *mut alloc::vec::Vec<$ty> as *mut RustVec<$ty>
+                core::ptr::from_mut(*ptr).cast::<RustVec<$ty>>()
             }
             #[export_name = concat!("cxxbridge1$rust_option$rust_vec$", $segment, "$set")]
             unsafe extern "C" fn __set(
