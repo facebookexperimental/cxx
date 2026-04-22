@@ -107,14 +107,18 @@ impl Type {
                         }
                     }
                     Type::Ident(_) => {
+                        let inner = &r.inner;
+                        let named = NamedImplKey {
+                            symbol: mangle::typename(inner, res)?,
+                            begin_span: ty.name.span(),
+                            outer: self,
+                            inner,
+                            end_span: ty.rangle.span,
+                        };
                         if r.mutable {
-                            Some(ImplKey::RustOption(OptionInner::MutRef(
-                                NamedImplKey::new(self, ty, res)?,
-                            )))
+                            Some(ImplKey::RustOption(OptionInner::MutRef(named)))
                         } else {
-                            Some(ImplKey::RustOption(OptionInner::Ref(
-                                NamedImplKey::new(self, ty, res)?,
-                            )))
+                            Some(ImplKey::RustOption(OptionInner::Ref(named)))
                         }
                     }
                     _ => None,
@@ -145,6 +149,13 @@ impl<'a> Hash for NamedImplKey<'a> {
 }
 
 impl<'a> NamedImplKey<'a> {
+    pub(crate) fn rust(&self) -> &'a Ident {
+        match self.inner {
+            Type::Ident(ident) => &ident.rust,
+            _ => panic!("unexpected inner type in NamedImplKey"),
+        }
+    }
+
     fn new(outer: &'a Type, ty1: &'a Ty1, res: &UnorderedMap<&Ident, Resolution>) -> Option<Self> {
         let inner = &ty1.inner;
         Some(NamedImplKey {

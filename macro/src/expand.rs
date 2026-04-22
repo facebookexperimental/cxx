@@ -115,7 +115,7 @@ fn expand(ffi: Module, doc: Doc, attrs: OtherAttrs, apis: &[Api], types: &Types)
                 hidden.extend(expand_rust_vec(ident, types, conditional_impl));
             }
             ImplKey::RustOption(ident) => {
-                hidden.extend(expand_rust_option(ident, types, explicit_impl));
+                hidden.extend(expand_rust_option(ident, types, conditional_impl));
             }
             ImplKey::UniquePtr(ident) => {
                 expanded.extend(expand_unique_ptr(ident, types, conditional_impl));
@@ -1962,39 +1962,39 @@ fn expand_rust_vec(
 fn expand_rust_option(
     inner: &OptionInner,
     types: &Types,
-    explicit_impl: Option<&Impl>,
+    conditional_impl: &ConditionalImpl,
 ) -> TokenStream {
-    let (elem, key, resolve, link_prefix, local_prefix) = match inner {
+    let (key, link_prefix, local_prefix) = match inner {
         OptionInner::RustBox(key) => {
-            let elem = key.rust;
+            let elem = key.rust();
             let resolve = types.resolve(elem);
             let link_prefix = format!("cxxbridge1$rust_option$Box${}$", resolve.name.to_symbol());
             let local_prefix = format_ident!("{}__box__option_", elem);
-            (elem, key, resolve, link_prefix, local_prefix)
+            (key, link_prefix, local_prefix)
         }
         OptionInner::Ref(key) => {
-            let elem = key.rust;
-            if types.try_resolve(key.rust).is_none() {
+            let elem = key.rust();
+            if types.try_resolve(elem).is_none() {
                 return TokenStream::new();
             }
             let resolve = types.resolve(elem);
             let link_prefix = format!("cxxbridge1$rust_option$const${}$", resolve.name.to_symbol());
             let local_prefix = format_ident!("{}__const__ref__option_", elem);
-            (elem, key, resolve, link_prefix, local_prefix)
+            (key, link_prefix, local_prefix)
         }
         OptionInner::MutRef(key) => {
-            let elem = key.rust;
-            if types.try_resolve(key.rust).is_none() {
+            let elem = key.rust();
+            if types.try_resolve(elem).is_none() {
                 return TokenStream::new();
             }
             let resolve = types.resolve(elem);
             let link_prefix = format!("cxxbridge1$rust_option${}$", resolve.name.to_symbol());
             let local_prefix = format_ident!("{}__ref__option_", elem);
-            (elem, key, resolve, link_prefix, local_prefix)
+            (key, link_prefix, local_prefix)
         }
         OptionInner::RefVec(key) => {
-            let elem = key.rust;
-            if types.try_resolve(key.rust).is_none() {
+            let elem = key.rust();
+            if types.try_resolve(elem).is_none() {
                 return TokenStream::new();
             }
             let resolve = types.resolve(elem);
@@ -2003,17 +2003,17 @@ fn expand_rust_option(
                 resolve.name.to_symbol()
             );
             let local_prefix = format_ident!("{}__vec__const__ref__option_", elem);
-            (elem, key, resolve, link_prefix, local_prefix)
+            (key, link_prefix, local_prefix)
         }
         OptionInner::MutRefVec(key) => {
-            let elem = key.rust;
-            if types.try_resolve(key.rust).is_none() {
+            let elem = key.rust();
+            if types.try_resolve(elem).is_none() {
                 return TokenStream::new();
             }
             let resolve = types.resolve(elem);
             let link_prefix = format!("cxxbridge1$rust_option$Vec${}$", resolve.name.to_symbol());
             let local_prefix = format_ident!("{}__vec__ref__option_", elem);
-            (elem, key, resolve, link_prefix, local_prefix)
+            (key, link_prefix, local_prefix)
         }
     };
     let link_new = format!("{}new", link_prefix);
@@ -2030,32 +2030,40 @@ fn expand_rust_option(
     let local_value = format_ident!("{}value", local_prefix);
     let local_set = format_ident!("{}set", local_prefix);
 
-    let begin_span = explicit_impl.map_or(key.begin_span, |explicit| explicit.impl_token.span);
-    let end_span = explicit_impl.map_or(key.end_span, |explicit| explicit.brace_token.span.join());
+    let cfg = conditional_impl.cfg.into_attr();
+    let begin_span = conditional_impl
+        .explicit_impl
+        .map_or(key.begin_span, |explicit| explicit.impl_token.span);
+    let end_span = conditional_impl
+        .explicit_impl
+        .map_or(key.end_span, |explicit| explicit.brace_token.span.join());
     let unsafe_token = format_ident!("unsafe", span = begin_span);
 
-    let ident = key.rust;
-    let (impl_generics, ty_generics) = generics::split_for_impl(key, explicit_impl, resolve);
+    let ident = key.rust();
+    let (impl_generics, ty_generics) = generics::split_for_impl(key, conditional_impl, types);
     let (ty, trait_impl_ty, ty_ptr, const_ty_ptr, prevent_unwind_drop_label) = match inner {
-        OptionInner::RustBox(_) => (
-            quote! { ::cxx::alloc::boxed::Box<#elem #ty_generics> },
-            quote! { ::cxx::alloc::boxed::Box<#elem #ty_generics> },
-            quote! { *mut #elem #ty_generics },
-            quote! { *const #elem #ty_generics },
-            format!("::alloc::boxed::Box<::{}> as Drop>::drop", ident),
-        ),
+        OptionInner::RustBox(_) => {
+            let box_ty = quote! { ::cxx::alloc::boxed::Box<#ty_generics> };
+            (
+                box_ty.clone(),
+                box_ty.clone(),
+                quote! { *mut #ty_generics },
+                quote! { *const #ty_generics },
+                format!("::alloc::boxed::Box<::{}> as Drop>::drop", ident),
+            )
+        }
         OptionInner::Ref(_) => (
-            quote! { &#elem #ty_generics },
-            quote! { &#elem #ty_generics },
-            quote! { *const #elem #ty_generics },
-            quote! { *const #elem #ty_generics },
+            quote! { &#ty_generics },
+            quote! { &#ty_generics },
+            quote! { *const #ty_generics },
+            quote! { *const #ty_generics },
             format!("&::{}> as Drop>::drop", ident),
         ),
         OptionInner::MutRef(_) => (
-            quote! { &mut #elem #ty_generics },
-            quote! { &mut #elem #ty_generics },
-            quote! { *mut #elem #ty_generics },
-            quote! { *const #elem #ty_generics },
+            quote! { &mut #ty_generics },
+            quote! { &mut #ty_generics },
+            quote! { *mut #ty_generics },
+            quote! { *const #ty_generics },
             format!("&mut ::{}> as Drop>::drop", ident),
         ),
         OptionInner::RefVec(_) => (
@@ -2066,38 +2074,41 @@ fn expand_rust_option(
             // for a direct (mut) ref above (e.g. it could have been a const bool generic)
             // but using the actual `Vec` here at least gives some idea of what's going on
             // if this shows up in an error message.
-            quote! { &::cxx::private::RustVec<#elem #ty_generics> },
-            quote! { &#elem #ty_generics },
-            quote! { *const ::cxx::private::RustVec<#elem #ty_generics> },
-            quote! { *const ::cxx::private::RustVec<#elem #ty_generics> },
+            quote! { &::cxx::private::RustVec<#ty_generics> },
+            quote! { &#ty_generics },
+            quote! { *const ::cxx::private::RustVec<#ty_generics> },
+            quote! { *const ::cxx::private::RustVec<#ty_generics> },
             format!("&::alloc::vec::Vec<::{}> as Drop>::drop", ident),
         ),
         OptionInner::MutRefVec(_) => (
-            quote! { &mut ::cxx::private::RustVec<#elem #ty_generics> },
-            quote! { &mut #elem #ty_generics },
-            quote! { *mut ::cxx::private::RustVec<#elem #ty_generics> },
-            quote! { *const ::cxx::private::RustVec<#elem #ty_generics> },
+            quote! { &mut ::cxx::private::RustVec<#ty_generics> },
+            quote! { &mut #ty_generics },
+            quote! { *mut ::cxx::private::RustVec<#ty_generics> },
+            quote! { *const ::cxx::private::RustVec<#ty_generics> },
             format!("&mut ::alloc::vec::Vec<::{}> as Drop>::drop", ident),
         ),
     };
     let set_value_impl = match inner {
         OptionInner::RustBox(_) => quote! {
+            #cfg
             #[doc(hidden)]
-            #[#UnsafeAttr(#ExportNameAttr = #link_set)]
+            #[unsafe(export_name = #link_set)]
             unsafe extern "C" fn #local_set #impl_generics(this: *mut ::cxx::private::RustOption<#ty>, value: *mut ::core::mem::MaybeUninit<#ty>) {
                 let value = core::mem::replace(value.as_mut().unwrap(), ::core::mem::MaybeUninit::zeroed());
                 this.as_mut().unwrap().set(unsafe { value.assume_init() });
             }
+            #cfg
             #[doc(hidden)]
-            #[#UnsafeAttr(#ExportNameAttr = #link_value_const)]
+            #[unsafe(export_name = #link_value_const)]
             unsafe extern "C" fn #local_value_const #impl_generics(this: *const ::cxx::private::RustOption<#ty>) -> *const #ty {
                 let this = unsafe { this.as_ref().unwrap() };
                 ::cxx::core::debug_assert!(this.has_value());
                 let v: &#ty = unsafe { this.as_option().as_ref().unwrap() };
                 v as _
             }
+            #cfg
             #[doc(hidden)]
-            #[#UnsafeAttr(#ExportNameAttr = #link_value)]
+            #[unsafe(export_name = #link_value)]
             unsafe extern "C" fn #local_value #impl_generics(this: *mut ::cxx::private::RustOption<#ty>) -> *mut #ty {
                 let this: &mut ::cxx::private::RustOption<#ty> = unsafe { this.as_mut().unwrap() };
                 ::cxx::core::debug_assert!(this.has_value());
@@ -2106,13 +2117,15 @@ fn expand_rust_option(
         },
         OptionInner::Ref(_) | OptionInner::RefVec(_) => quote! {
             // no value_const, value already is value_const
+            #cfg
             #[doc(hidden)]
-            #[#UnsafeAttr(#ExportNameAttr = #link_set)]
+            #[unsafe(export_name = #link_set)]
             unsafe extern "C" fn #local_set #impl_generics(this: *mut ::cxx::private::RustOption<#ty>, value: #ty_ptr) {
                 unsafe { this.as_mut().unwrap().set(&*value) };
             }
+            #cfg
             #[doc(hidden)]
-            #[#UnsafeAttr(#ExportNameAttr = #link_value)]
+            #[unsafe(export_name = #link_value)]
             unsafe extern "C" fn #local_value #impl_generics(this: *const ::cxx::private::RustOption<#ty>) -> #ty_ptr {
                 let this: &::cxx::private::RustOption<#ty> = unsafe { this.as_ref().unwrap() };
                 ::cxx::core::debug_assert!(this.has_value());
@@ -2122,21 +2135,24 @@ fn expand_rust_option(
             }
         },
         OptionInner::MutRef(_) | OptionInner::MutRefVec(_) => quote! {
+            #cfg
             #[doc(hidden)]
-            #[#UnsafeAttr(#ExportNameAttr = #link_set)]
+            #[unsafe(export_name = #link_set)]
             unsafe extern "C" fn #local_set #impl_generics(this: *mut ::cxx::private::RustOption<#ty>, value: #ty_ptr) {
                 unsafe { this.as_mut().unwrap().set(&mut *value) };
             }
+            #cfg
             #[doc(hidden)]
-            #[#UnsafeAttr(#ExportNameAttr = #link_value_const)]
+            #[unsafe(export_name = #link_value_const)]
             unsafe extern "C" fn #local_value_const #impl_generics(this: *const ::cxx::private::RustOption<#ty>) -> #const_ty_ptr {
                 let this = unsafe { this.as_ref().unwrap() };
                 ::cxx::core::debug_assert!(this.has_value());
                 let v: &#ty = unsafe { this.as_option().as_ref().unwrap() };
                 &**v as _
             }
+            #cfg
             #[doc(hidden)]
-            #[#UnsafeAttr(#ExportNameAttr = #link_value)]
+            #[unsafe(export_name = #link_value)]
             unsafe extern "C" fn #local_value #impl_generics(this: *mut ::cxx::private::RustOption<#ty>) -> #ty_ptr {
                 let this: &mut ::cxx::private::RustOption<#ty> = unsafe { this.as_mut().unwrap() };
                 ::cxx::core::debug_assert!(this.has_value());
@@ -2147,21 +2163,26 @@ fn expand_rust_option(
         },
     };
     quote_spanned! {end_span=>
-        // #[doc(hidden)]
-        #unsafe_token impl #impl_generics ::cxx::private::ImplOption<#ty> for #trait_impl_ty {}
+        #cfg
+        #[automatically_derived]
         #[doc(hidden)]
-        #[#UnsafeAttr(#ExportNameAttr = #link_new)]
+        #unsafe_token impl #impl_generics ::cxx::private::ImplOption<#ty> for #trait_impl_ty {}
+        #cfg
+        #[doc(hidden)]
+        #[unsafe(export_name = #link_new)]
         unsafe extern "C" fn #local_new #impl_generics(this: *mut ::cxx::private::RustOption<#ty>) {
             unsafe { ::cxx::core::ptr::write(this, ::cxx::private::RustOption::new()) };
         }
+        #cfg
         #[doc(hidden)]
-        #[#UnsafeAttr(#ExportNameAttr = #link_drop)]
+        #[unsafe(export_name = #link_drop)]
         unsafe extern "C" fn #local_drop #impl_generics(this: *mut ::cxx::private::RustOption<#ty>) {
             let __fn = concat!("<", module_path!(), #prevent_unwind_drop_label);
             ::cxx::private::prevent_unwind(__fn, || unsafe { ::cxx::core::ptr::drop_in_place(this) });
         }
+        #cfg
         #[doc(hidden)]
-        #[#UnsafeAttr(#ExportNameAttr = #link_has_value)]
+        #[unsafe(export_name = #link_has_value)]
         unsafe extern "C" fn #local_has_value #impl_generics(this: *const ::cxx::private::RustOption<#ty>) -> bool {
             unsafe { this.as_ref().unwrap().value().is_some() }
         }

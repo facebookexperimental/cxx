@@ -354,6 +354,7 @@ impl<'a> Types<'a> {
             }
             Type::RustBox(ty)
             | Type::RustVec(ty)
+            | Type::RustOption(ty)
             | Type::UniquePtr(ty)
             | Type::SharedPtr(ty)
             | Type::WeakPtr(ty)
@@ -385,6 +386,7 @@ impl<'a> Types<'a> {
             | Type::Fn(_)
             | Type::Void(_)
             | Type::RustVec(_)
+            | Type::RustOption(_)
             | Type::UniquePtr(_)
             | Type::SharedPtr(_)
             | Type::WeakPtr(_)

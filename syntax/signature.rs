@@ -69,6 +69,7 @@ impl Signature {
                 }
                 Type::RustBox(ty1)
                 | Type::RustVec(ty1)
+                | Type::RustOption(ty1)
                 | Type::UniquePtr(ty1)
                 | Type::SharedPtr(ty1)
                 | Type::WeakPtr(ty1)
