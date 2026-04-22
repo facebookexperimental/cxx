@@ -28,6 +28,7 @@ impl<'a> Types<'a> {
             }
             TypeQuery::RustBox
             | TypeQuery::RustVec
+            | TypeQuery::RustOption
             | TypeQuery::Str
             | TypeQuery::Fn
             | TypeQuery::Void

@@ -1,0 +1,11 @@
+error[E0080]: evaluation panicked: assertion failed: mem::size_of::<Option<U>>() == mem::size_of::<Repr>()
+ --> src/rust_option.rs
+  |
+  |         const _IS_OPTION_SIZE: () = assert!(mem::size_of::<Option<U>>() == mem::size_of::<Repr>());
+  |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `cxx::private::assert_option_safe::__SizeCheck::<usize>::_IS_OPTION_SIZE` failed here
+
+note: erroneous constant encountered
+  --> src/rust_option.rs
+   |
+   |     let _: () = __SizeCheck::<T>::_IS_OPTION_SIZE;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

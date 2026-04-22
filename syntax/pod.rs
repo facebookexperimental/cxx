@@ -23,6 +23,7 @@ impl<'a> Types<'a> {
             }
             TypeQuery::RustBox
             | TypeQuery::RustVec
+            | TypeQuery::RustOption
             | TypeQuery::UniquePtr
             | TypeQuery::SharedPtr
             | TypeQuery::WeakPtr
