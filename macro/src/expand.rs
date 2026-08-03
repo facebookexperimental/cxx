@@ -14,16 +14,16 @@ use crate::syntax::trivial::TrivialReason;
 use crate::syntax::types::ConditionalImpl;
 use crate::syntax::unpin::UnpinReason;
 use crate::syntax::{
-    self, check, mangle, Api, Doc, Enum, ExternFn, ExternType, FnKind, Lang, Pair, Signature,
-    Struct, Trait, Type, TypeAlias, Types,
+    self, Api, Doc, Enum, ExternFn, ExternType, FnKind, Lang, Pair, Signature, Struct, Trait, Type,
+    TypeAlias, Types, check, mangle,
 };
 use crate::type_id::Crate;
 use crate::{derive, generics};
 use proc_macro2::{Ident, Span, TokenStream};
-use quote::{format_ident, quote, quote_spanned, ToTokens};
+use quote::{ToTokens, format_ident, quote, quote_spanned};
 use std::fmt::{self, Display};
 use std::mem;
-use syn::{parse_quote, GenericParam, Generics, Lifetime, Result, Token, Visibility};
+use syn::{GenericParam, Generics, Lifetime, Result, Token, Visibility, parse_quote};
 
 pub(crate) fn bridge(mut ffi: Module) -> Result<TokenStream> {
     let ref mut errors = Errors::new();
@@ -2777,9 +2777,8 @@ fn expand_extern_type(ty: &Type, types: &Types, proper: bool) -> TokenStream {
         Type::Ptr(ty) => {
             if proper && types.is_considered_improper_ctype(&ty.inner) {
                 let star = ty.star;
-                let mutability = ty.mutability;
-                let constness = ty.constness;
-                quote!(#star #mutability #constness ::cxx::core::ffi::c_void)
+                let mutability = &ty.mutability;
+                quote!(#star #mutability ::cxx::core::ffi::c_void)
             } else {
                 quote!(#ty)
             }

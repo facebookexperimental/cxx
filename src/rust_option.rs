@@ -265,13 +265,11 @@ impl<'a, T> RustOption<&'a RustVec<T>> {
     }
 
     pub fn as_option_vec_ref(&self) -> &Option<&'a Vec<T>> {
-        unsafe { &*core::ptr::from_ref(self).cast::<RustOption<&Vec<T>>>() }
-            .as_option()
+        unsafe { &*core::ptr::from_ref(self).cast::<RustOption<&Vec<T>>>() }.as_option()
     }
 
     pub fn as_option_vec_ref_mut(&mut self) -> &mut Option<&'a Vec<T>> {
-        unsafe { &mut *core::ptr::from_mut(self).cast::<RustOption<&Vec<T>>>() }
-            .as_mut_option()
+        unsafe { &mut *core::ptr::from_mut(self).cast::<RustOption<&Vec<T>>>() }.as_mut_option()
     }
 }
 
@@ -293,17 +291,12 @@ impl<'a, T> RustOption<&'a mut RustVec<T>> {
     }
 
     pub fn as_option_vec_mut(&self) -> &Option<&'a mut Vec<T>> {
-        unsafe {
-            &*core::ptr::from_ref(self).cast::<RustOption<&'a mut Vec<T>>>()
-        }
-        .as_option()
+        unsafe { &*core::ptr::from_ref(self).cast::<RustOption<&'a mut Vec<T>>>() }.as_option()
     }
 
     pub fn as_option_vec_mut_mut(&mut self) -> &mut Option<&'a mut Vec<T>> {
-        unsafe {
-            &mut *core::ptr::from_mut(self).cast::<RustOption<&'a mut Vec<T>>>()
-        }
-        .as_mut_option()
+        unsafe { &mut *core::ptr::from_mut(self).cast::<RustOption<&'a mut Vec<T>>>() }
+            .as_mut_option()
     }
 }
 
@@ -325,10 +318,8 @@ impl<'a> RustOption<&'a RustVec<RustString>> {
     }
 
     pub fn as_option_vec_string_ref_mut(&mut self) -> &mut Option<&'a Vec<String>> {
-        unsafe {
-            &mut *core::ptr::from_mut(self).cast::<RustOption<&Vec<String>>>()
-        }
-        .as_mut_option()
+        unsafe { &mut *core::ptr::from_mut(self).cast::<RustOption<&Vec<String>>>() }
+            .as_mut_option()
     }
 }
 
@@ -348,8 +339,7 @@ impl<'a> RustOption<&'a mut RustVec<RustString>> {
 
     pub fn as_option_vec_string_mut_mut(&mut self) -> &mut Option<&'a mut Vec<String>> {
         unsafe {
-            (*core::ptr::from_mut(self)
-                .cast::<RustOption<&mut Vec<alloc::string::String>>>())
+            (*core::ptr::from_mut(self).cast::<RustOption<&mut Vec<alloc::string::String>>>())
                 .as_mut_option()
         }
     }
@@ -371,8 +361,7 @@ impl<'a> RustOption<&'a RustString> {
     }
 
     pub fn as_option_string_ref_mut(&mut self) -> &mut Option<&'a String> {
-        unsafe { &mut *core::ptr::from_mut(self).cast::<RustOption<&String>>() }
-            .as_mut_option()
+        unsafe { &mut *core::ptr::from_mut(self).cast::<RustOption<&String>>() }.as_mut_option()
     }
 }
 
@@ -394,9 +383,7 @@ impl<'a> RustOption<&'a mut RustString> {
     }
 
     pub fn as_option_string_mut_mut(&mut self) -> &mut Option<&'a mut String> {
-        unsafe {
-            (*core::ptr::from_mut(self).cast::<RustOption<&mut String>>()).as_mut_option()
-        }
+        unsafe { (*core::ptr::from_mut(self).cast::<RustOption<&mut String>>()).as_mut_option() }
     }
 }
 

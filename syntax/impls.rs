@@ -202,14 +202,12 @@ impl PartialEq for Ptr {
             mutable,
             inner,
             mutability: _,
-            constness: _,
         } = self;
         let Ptr {
             star: _,
             mutable: mutable2,
             inner: inner2,
             mutability: _,
-            constness: _,
         } = other;
         mutable == mutable2 && inner == inner2
     }
@@ -222,7 +220,6 @@ impl Hash for Ptr {
             mutable,
             inner,
             mutability: _,
-            constness: _,
         } = self;
         mutable.hash(state);
         inner.hash(state);

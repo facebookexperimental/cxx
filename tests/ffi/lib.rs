@@ -18,7 +18,7 @@
 pub mod cast;
 pub mod module;
 
-use cxx::{type_id, CxxString, CxxVector, ExternType, SharedPtr, UniquePtr};
+use cxx::{CxxString, CxxVector, ExternType, SharedPtr, UniquePtr, type_id};
 use std::fmt::{self, Display};
 use std::mem::MaybeUninit;
 use std::os::raw::c_char;
@@ -382,8 +382,8 @@ pub mod ffi {
         unsafe fn r_return_rust_option_pin_mut_shared<'a>(
             shared: Pin<&'a mut Shared>,
         ) -> Option<Pin<&'a mut Shared>>;
-        fn r_return_rust_option_pin_mut_generic(
-        ) -> Option<Pin<&'static mut StructWithLifetime<'static>>>;
+        fn r_return_rust_option_pin_mut_generic()
+        -> Option<Pin<&'static mut StructWithLifetime<'static>>>;
         unsafe fn r_return_rust_option_ref_opaque<'a>(opaque: &'a R) -> Option<&'a R>;
         unsafe fn r_return_rust_option_mut_opaque<'a>(opaque: &'a mut R) -> Option<&'a mut R>;
         unsafe fn r_return_rust_option_pin_mut_opaque<'a>(
@@ -454,7 +454,7 @@ pub mod ffi {
             opaque: Pin<&'a mut R>,
         ) -> Result<Option<Pin<&'a mut R>>>;
         unsafe fn r_try_return_rust_option_ref_native<'a>(native: &'a u8)
-            -> Result<Option<&'a u8>>;
+        -> Result<Option<&'a u8>>;
         unsafe fn r_try_return_rust_option_mut_native<'a>(
             native: &'a mut u8,
         ) -> Result<Option<&'a mut u8>>;
@@ -530,7 +530,7 @@ pub mod ffi_no_rustfmt {
 
 mod other {
     use cxx::kind::{Opaque, Trivial};
-    use cxx::{type_id, CxxString, ExternType};
+    use cxx::{CxxString, ExternType, type_id};
 
     #[repr(C)]
     pub struct D {
@@ -545,7 +545,7 @@ mod other {
 
     pub mod f {
         use cxx::kind::Opaque;
-        use cxx::{type_id, CxxString, ExternType};
+        use cxx::{CxxString, ExternType, type_id};
 
         #[repr(C)]
         pub struct F {
@@ -657,7 +657,7 @@ fn r_return_box() -> Box<R> {
 
 fn r_return_unique_ptr() -> UniquePtr<ffi::C> {
     #[allow(missing_unsafe_on_extern)]
-    extern "C" {
+    unsafe extern "C" {
         fn cxx_test_suite_get_unique_ptr() -> *mut ffi::C;
     }
     unsafe { UniquePtr::from_raw(cxx_test_suite_get_unique_ptr()) }
@@ -665,7 +665,7 @@ fn r_return_unique_ptr() -> UniquePtr<ffi::C> {
 
 fn r_return_shared_ptr() -> SharedPtr<ffi::C> {
     #[allow(missing_unsafe_on_extern)]
-    extern "C" {
+    unsafe extern "C" {
         fn cxx_test_suite_get_shared_ptr(repr: *mut SharedPtr<ffi::C>);
     }
     let mut shared_ptr = MaybeUninit::<SharedPtr<ffi::C>>::uninit();
@@ -709,7 +709,7 @@ fn r_return_rust_string() -> String {
 
 fn r_return_unique_ptr_string() -> UniquePtr<CxxString> {
     #[allow(missing_unsafe_on_extern)]
-    extern "C" {
+    unsafe extern "C" {
         fn cxx_test_suite_get_unique_ptr_string() -> *mut CxxString;
     }
     unsafe { UniquePtr::from_raw(cxx_test_suite_get_unique_ptr_string()) }
@@ -779,8 +779,8 @@ unsafe fn r_return_rust_option_pin_mut_shared<'a>(
     Some(shared)
 }
 
-fn r_return_rust_option_pin_mut_generic(
-) -> Option<Pin<&'static mut ffi::StructWithLifetime<'static>>> {
+fn r_return_rust_option_pin_mut_generic()
+-> Option<Pin<&'static mut ffi::StructWithLifetime<'static>>> {
     None
 }
 
